@@ -1,4 +1,4 @@
-# Super Sub (Phase 1: the playable core loop)
+# Super Sub (Phases 1 and 2: the core loop, then the career)
 
 You are the fantasy substitute. You watch a real World Cup match and you
 have exactly one action: ENTER THE PITCH at a minute of your choosing.
@@ -7,25 +7,32 @@ stat line. Come on while your side is cruising and you carry a 1.0x
 multiplier; come on when it looks lost and you carry up to 10.0x.
 
 Phase 0 was an API spike against TxLINE (see `../supersub-spike`,
-`FINDINGS.md`); its findings drive the architecture here. Phase 1 is the
-playable core loop and nothing else: no wallets, no career page, no auth
-beyond an anonymous local identity.
+`FINDINGS.md`); its findings drive the architecture here. Phase 1 built
+the playable core loop. Phase 2 wraps identity, persistence, and
+narrative around it: a created-once player (signed anonymous cookie, no
+accounts), the Career page (`/career`) with Impact Rating, the record,
+the badge cabinet, and match history, plus a stored match report per
+resolved entry written by `claude-sonnet-4-6` (deterministic template
+fallback when no API key is set). The match loop itself is untouched.
 
-## Quick start (replay mode, works offline against the bundled fixture)
+## Quick start (replay mode, works offline against bundled fixtures)
 
 ```
 npm install
 # point .env.local at your Supabase project (see .env.example), then apply
-# the migration in supabase/migrations/ via the dashboard SQL editor,
-# supabase CLI ("supabase db push"), or any Postgres client
+# the migrations in supabase/migrations/ in order via the dashboard SQL
+# editor, supabase CLI ("supabase db push"), or any Postgres client
 npm run dev
 ```
 
-Open http://localhost:3000. The Bench lists France v Morocco (fixture
-18209181, the real 2026-07-09 match, bundled under `data/replay/`). Tap
-it: the replay session kicks off at `REPLAY_SPEED`x (default 30x). Pick
-Morocco, enter the pitch, watch provisional points move, watch VAR erase
-a Morocco goal at 49', and collect your resolved score at full time.
+Open http://localhost:3000. Sign your forms (name, shirt number,
+position; the crest is generated from a hash of name + number). The Bench
+lists France v Morocco (18209181) and Switzerland v Colombia (18202783),
+both real matches bundled under `data/replay/`. Tap one: the replay
+session kicks off at `REPLAY_SPEED`x (default 30x). Pick a side, enter
+the pitch, watch provisional points move (France v Morocco includes a
+real VAR-erased goal at 49'), and collect your resolved score, badges,
+and match report at full time. Your career lives at `/career`.
 
 Useful query params on the match screen:
 
@@ -71,8 +78,18 @@ internal interface (`src/lib/sources/types.ts`).
   The same pure scoring function produces the client's provisional points
   and the server's resolution; resolution is computed ONLY from the final
   event-sourced state at the whistle.
-- Supabase holds entries and their resolved results (`entries` table).
-  One entry per user per fixture is a database unique constraint.
+- Supabase holds players, entries with their resolved results and stored
+  reports, and the badge cabinet (`players`, `entries`, `player_badges`).
+  One entry per player per fixture is a database unique constraint.
+- Identity (Phase 2): `src/lib/server/playerAuth.ts` signs the anonymous
+  player id into an httpOnly cookie (HMAC, `SUPERSUB_SESSION_SECRET`).
+- Career logic is pure and unit-tested: badges in
+  `src/lib/career/badges.ts`, aggregates in `src/lib/career/stats.ts`,
+  multiplier display tiers in `src/lib/config/scoring.ts`.
+- Match reports: `src/lib/server/report.ts` builds structured facts from
+  the resolved entry only, calls `claude-sonnet-4-6` via the official
+  SDK, and falls back to a deterministic template on any failure. Stored
+  once at resolution inside the same guarded update; never regenerated.
 
 ## Verification
 
@@ -83,6 +100,15 @@ internal interface (`src/lib/sources/types.ts`).
 - `npm run smoke` drives the full loop over HTTP against a running dev
   server: fixtures, stream, enter (plus duplicate rejection), the VAR
   sequence, resolve, and idempotence. See `SMOKE.md` for a captured run.
+- `npm run test:badges` unit-tests the badge cabinet against constructed
+  resolved entries: 30 checks including the Miracle Worker boundary at
+  p = 0.10, Iron Nerve at minute 85, Comeback King from-behind detection,
+  and the multiplier tier boundaries.
+- `npm run smoke:career` drives the Phase 2 fresh-user flow: create a
+  player, play two replayed matches end to end, and verify badges, form,
+  Impact Rating, stored reports, and the duplicate-player guard. See
+  `SMOKE2.md` for a captured run including the server-restart
+  persistence check and the LLM fallback proof.
 
 ## Deploy notes
 

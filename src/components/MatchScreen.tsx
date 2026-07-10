@@ -3,13 +3,17 @@
 // The Match screen: the product. Scoreboard, the win probability curve,
 // the team picker, ENTER THE PITCH, on-the-pitch provisional points with
 // VAR rollback, and the full-time resolution takeover.
+//
+// Identity is the signed player cookie; a visitor without a player can
+// watch, but the pitch is for contracted players only.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useMatchStream } from "@/hooks/useMatchStream";
-import { getUserId } from "@/lib/identity";
 import { fetchEntry, postEnter, postResolve, type EntryRow } from "@/lib/entry";
+import { fetchPlayerSummary, type PlayerRow } from "@/lib/player";
 import { fmtMultiplier, fmtPct } from "@/lib/format";
+import { tierForMultiplier } from "@/lib/config/scoring";
 import { probAt, teamProb } from "@/lib/state/winprob";
 import { multiplierForProb, scoreWindow } from "@/lib/state/scoring";
 import { Scoreboard } from "./Scoreboard";
@@ -32,9 +36,11 @@ export function MatchScreen({
   const stream = useMatchStream(fixtureId, { mode, speed });
   const { meta, state, probSeries, feedNow } = stream;
 
-  const [userId, setUserId] = useState<string | null>(null);
+  const [player, setPlayer] = useState<PlayerRow | null>(null);
+  const [playerLoaded, setPlayerLoaded] = useState(false);
   const [entry, setEntry] = useState<EntryRow | null>(null);
   const [entryLoaded, setEntryLoaded] = useState(false);
+  const [newBadges, setNewBadges] = useState<string[]>([]);
   const [selected, setSelected] = useState<1 | 2>(1);
   const [entering, setEntering] = useState(false);
   const [enterError, setEnterError] = useState<string | null>(null);
@@ -43,14 +49,26 @@ export function MatchScreen({
   const [varBanner, setVarBanner] = useState(false);
 
   useEffect(() => {
-    setUserId(getUserId());
+    let cancelled = false;
+    fetchPlayerSummary().then((s) => {
+      if (cancelled) return;
+      setPlayer(s.player);
+      setPlayerLoaded(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Restore an existing entry on reload.
   useEffect(() => {
-    if (!userId) return;
+    if (!playerLoaded) return;
+    if (!player) {
+      setEntryLoaded(true);
+      return;
+    }
     let cancelled = false;
-    fetchEntry(userId, fixtureId).then((row) => {
+    fetchEntry(fixtureId).then((row) => {
       if (cancelled) return;
       if (row) {
         setEntry(row);
@@ -61,7 +79,7 @@ export function MatchScreen({
     return () => {
       cancelled = true;
     };
-  }, [userId, fixtureId]);
+  }, [playerLoaded, player, fixtureId]);
 
   const team: 1 | 2 = entry ? entry.team : selected;
   const phase = state?.phase ?? "upcoming";
@@ -103,8 +121,6 @@ export function MatchScreen({
     for (const c of state.countables) {
       if (c.kind === "goal" && c.discarded && !seenDiscarded.current.has(c.id)) {
         seenDiscarded.current.add(c.id);
-        // Only flash after the backfill settled, so a mid-match join does
-        // not replay old drama as if it just happened.
         if (state.eventCount > 0 && feedNow - c.ts < 15 * 60_000 * (meta?.speed ?? 1)) {
           setVarBanner(true);
           window.setTimeout(() => setVarBanner(false), 5_200);
@@ -114,17 +130,10 @@ export function MatchScreen({
   }, [state, feedNow, meta?.speed]);
 
   const enter = useCallback(async () => {
-    if (!userId || entering) return;
+    if (!player || entering) return;
     setEntering(true);
     setEnterError(null);
-    const res = await postEnter({
-      userId,
-      fixtureId,
-      team,
-      mode,
-      speed,
-      feedTs: feedNow || undefined,
-    });
+    const res = await postEnter({ fixtureId, team, mode, speed, feedTs: feedNow || undefined });
     setEntering(false);
     if (res.entry) {
       setEntry(res.entry);
@@ -132,28 +141,29 @@ export function MatchScreen({
     } else {
       setEnterError(res.error ?? "Could not get you on. Try again.");
     }
-  }, [userId, entering, fixtureId, team, mode, speed, feedNow]);
+  }, [player, entering, fixtureId, team, mode, speed, feedNow]);
 
   // Resolution at the derived whistle: idempotent, retried while the
   // source settles.
   const resolveInFlight = useRef(false);
   const resolve = useCallback(async () => {
-    if (!userId || !entry || entry.resolved_at || resolveInFlight.current) return;
+    if (!player || !entry || entry.resolved_at || resolveInFlight.current) return;
     resolveInFlight.current = true;
     setResolving(true);
     setResolveError(null);
-    const res = await postResolve({ userId, fixtureId, mode: mode ?? entry.mode });
+    const res = await postResolve({ fixtureId, mode: mode ?? entry.mode });
     setResolving(false);
     resolveInFlight.current = false;
     if (res.entry?.resolved_at) {
       setEntry(res.entry);
+      setNewBadges(res.newBadges ?? []);
     } else if (res.status === 409) {
       // The server's fold has not called full time yet; ask again shortly.
       window.setTimeout(() => void resolve(), 4_000);
     } else {
       setResolveError(res.error ?? "Could not settle the score.");
     }
-  }, [userId, entry, fixtureId, mode]);
+  }, [player, entry, fixtureId, mode]);
 
   useEffect(() => {
     if (phase === "finished" && entry && !entry.resolved_at) void resolve();
@@ -222,7 +232,13 @@ export function MatchScreen({
             </p>
           </div>
           <div className="pb-1 text-right">
-            <p className="whisper">{entry ? "Your multiplier" : "Multiplier on offer"}</p>
+            <p className="whisper">
+              {entry
+                ? tierForMultiplier(entry.multiplier).name
+                : previewMultiplier !== null
+                  ? tierForMultiplier(previewMultiplier).name
+                  : "Multiplier on offer"}
+            </p>
             <p className={`hero-number text-4xl sm:text-5xl ${entry ? "text-chalk-50" : "text-chalk-100"}`}>
               {entry
                 ? fmtMultiplier(entry.multiplier)
@@ -254,11 +270,25 @@ export function MatchScreen({
         )}
       </section>
 
-      {entryLoaded && !entry && (
+      {playerLoaded && !player && phase !== "finished" && (
+        <section className="rounded-lg border border-pitch-600 bg-pitch-850 p-5 text-center">
+          <p className="text-sm text-chalk-300">
+            You can watch from the stands, but the pitch is for contracted players.
+          </p>
+          <Link
+            href="/"
+            className="mt-3 inline-block min-h-[44px] rounded-md border border-chalk-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          >
+            Sign your forms
+          </Link>
+        </section>
+      )}
+
+      {player && entryLoaded && !entry && (
         <section aria-label="Enter the pitch" className="flex flex-col gap-4 rounded-lg border border-pitch-600 bg-pitch-850 p-4">
           <p className="text-sm text-chalk-300">
-            You are on the bench. Pick your side, pick your moment. The worse it looks when you
-            step on, the bigger the multiplier you carry.
+            You are on the bench, {player.name}. Pick your side, pick your moment. The worse it
+            looks when you step on, the bigger the multiplier you carry.
           </p>
           <TeamPicker fixture={fixture} selected={selected} onSelect={setSelected} locked={false} />
           <EnterCta
@@ -287,6 +317,7 @@ export function MatchScreen({
       {phase === "finished" && entry && (
         <ResolutionOverlay
           entry={entry}
+          newBadges={newBadges}
           resolving={resolving || (!entry.resolved_at && !resolveError)}
           error={resolveError}
           onRetry={() => void resolve()}

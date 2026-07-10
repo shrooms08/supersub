@@ -7,6 +7,7 @@
 
 import type { EntryRow } from "@/lib/entry";
 import { fmtMultiplier, fmtPct, fmtPoints } from "@/lib/format";
+import { tierForMultiplier } from "@/lib/config/scoring";
 import type { WindowScore } from "@/lib/state/scoring";
 import { finalPoints } from "@/lib/state/scoring";
 
@@ -56,10 +57,10 @@ export function OnPitchPanel({
           </p>
         </div>
         <div className="bg-pitch-850 px-4 py-4">
-          <p className="whisper">Locked at entry</p>
+          <p className="whisper">{tierForMultiplier(entry.multiplier).name}</p>
           <p className="hero-number text-5xl text-chalk-50">{fmtMultiplier(entry.multiplier)}</p>
           <p className="mt-1 text-xs tabular-nums text-chalk-500">
-            P(win) was {fmtPct(entry.win_prob_at_entry)}% at {entry.entry_minute}&apos;
+            Locked at entry. P(win) was {fmtPct(entry.win_prob_at_entry)}% at {entry.entry_minute}&apos;
           </p>
         </div>
       </div>

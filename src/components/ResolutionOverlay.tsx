@@ -1,31 +1,42 @@
 "use client";
 
 // Full time. Resolution takes over the screen: final points huge, the
-// multiplier, and the line-by-line story of the shift.
+// multiplier with its tier name, the line-by-line story of the shift,
+// anything new for the cabinet, and the match report clipping below the
+// breakdown.
 
 import Link from "next/link";
 import type { EntryRow } from "@/lib/entry";
 import { fmtMultiplier, fmtPct, fmtPoints } from "@/lib/format";
+import { tierForMultiplier } from "@/lib/config/scoring";
+import { BADGES } from "@/lib/career/badges";
+import { MatchReportCard } from "./MatchReportCard";
 
 export function ResolutionOverlay({
   entry,
+  newBadges,
   resolving,
   error,
   onRetry,
 }: {
   entry: EntryRow | null;
+  newBadges: string[];
   resolving: boolean;
   error: string | null;
   onRetry: () => void;
 }) {
+  const badgeNames = newBadges
+    .map((key) => BADGES.find((b) => b.key === key)?.name)
+    .filter((n): n is string => Boolean(n));
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Full time result"
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-pitch-950/95 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 overflow-y-auto bg-pitch-950/95 p-4 backdrop-blur-sm"
     >
-      <div className="w-full max-w-md rounded-xl border border-pitch-600 bg-pitch-900 shadow-2xl">
+      <div className="mx-auto my-6 w-full max-w-md rounded-xl border border-pitch-600 bg-pitch-900 shadow-2xl">
         <div className="border-b border-pitch-700 px-6 py-4 text-center">
           <p className="font-display text-2xl font-black uppercase tracking-[0.2em] text-chalk-50">
             Full time
@@ -69,7 +80,8 @@ export function ResolutionOverlay({
                 <span className="font-bold text-chalk-100">{fmtMultiplier(entry.multiplier)}</span>
               </p>
               <p className="mt-1 text-xs text-chalk-500">
-                You came on at {entry.entry_minute}&apos; with P(win) {fmtPct(entry.win_prob_at_entry)}%.
+                {tierForMultiplier(entry.multiplier).name}. You came on at {entry.entry_minute}
+                &apos; with P(win) {fmtPct(entry.win_prob_at_entry)}%.
               </p>
             </div>
 
@@ -94,15 +106,34 @@ export function ResolutionOverlay({
                 </li>
               ))}
             </ul>
+
+            {badgeNames.length > 0 && (
+              <div className="border-t border-pitch-700 px-6 py-3">
+                <p className="whisper">Into the cabinet</p>
+                <p className="mt-1 text-sm font-bold text-chalk-100">{badgeNames.join(" · ")}</p>
+              </div>
+            )}
+
+            {entry.report && (
+              <div className="border-t border-pitch-700 px-4 py-4">
+                <MatchReportCard entry={entry} />
+              </div>
+            )}
           </>
         )}
 
-        <div className="border-t border-pitch-700 px-6 py-4">
+        <div className="flex gap-2 border-t border-pitch-700 px-6 py-4">
+          <Link
+            href="/career"
+            className="block min-h-[48px] flex-1 rounded-md border border-chalk-600 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-chalk-100 transition-colors hover:border-chalk-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          >
+            The career
+          </Link>
           <Link
             href="/"
-            className="block min-h-[48px] w-full rounded-md border border-chalk-600 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-chalk-100 transition-colors hover:border-chalk-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+            className="block min-h-[48px] flex-1 rounded-md border border-pitch-600 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-chalk-300 transition-colors hover:border-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
           >
-            Back to the bench
+            The bench
           </Link>
         </div>
       </div>

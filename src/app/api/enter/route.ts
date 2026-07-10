@@ -7,21 +7,23 @@
 // feedTs it last saw on its stream; that timestamp is clamped to the
 // source's own notion of now.
 //
-// One entry per user per fixture is enforced by the database constraint;
-// a second attempt returns 409 with the existing entry.
+// Identity comes from the signed player cookie (Phase 2); one entry per
+// player per fixture is enforced by the database constraint, surfaced as
+// 409 with the existing entry.
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSource } from "@/lib/sources";
 import { foldMatch, stateMinute } from "@/lib/state/fold";
 import { foldProbSeries, probAt, teamProb } from "@/lib/state/winprob";
 import { multiplierForProb } from "@/lib/state/scoring";
-import { supabase, type EntryRow } from "@/lib/server/supabase";
+import { supabase } from "@/lib/server/supabase";
+import { currentPlayer } from "@/lib/server/playerAuth";
+import type { EntryRow } from "@/lib/entry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface EnterBody {
-  userId?: string;
   fixtureId?: number;
   team?: number;
   mode?: string;
@@ -30,16 +32,21 @@ interface EnterBody {
 }
 
 export async function POST(req: NextRequest) {
+  const player = await currentPlayer();
+  if (!player) {
+    return NextResponse.json(
+      { error: "No player on the books. Sign your forms on the bench first." },
+      { status: 401 }
+    );
+  }
+
   let body: EnterBody;
   try {
     body = (await req.json()) as EnterBody;
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
-  const { userId, fixtureId, team } = body;
-  if (!userId || typeof userId !== "string" || userId.length > 128) {
-    return NextResponse.json({ error: "userId required" }, { status: 400 });
-  }
+  const { fixtureId, team } = body;
   if (!Number.isInteger(fixtureId)) {
     return NextResponse.json({ error: "fixtureId required" }, { status: 400 });
   }
@@ -54,8 +61,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const sourceNow = await source.feedNow(fixtureId!);
-    // The client's clock lags its stream slightly; trust it only within
-    // the source's own now.
     const entryFeedTs =
       typeof body.feedTs === "number" && body.feedTs > 0
         ? Math.min(body.feedTs, sourceNow)
@@ -88,7 +93,8 @@ export async function POST(req: NextRequest) {
     const scoreOpp = team === 1 ? state.score.p2 : state.score.p1;
 
     const row = {
-      user_id: userId,
+      user_id: player.id,
+      player_id: player.id,
       fixture_id: fixtureId,
       mode: source.mode,
       team,
@@ -114,7 +120,7 @@ export async function POST(req: NextRequest) {
         const { data: existing } = await supabase()
           .from("entries")
           .select()
-          .eq("user_id", userId)
+          .eq("player_id", player.id)
           .eq("fixture_id", fixtureId)
           .single<EntryRow>();
         return NextResponse.json(
@@ -132,17 +138,18 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Restore an existing entry on reload.
+// Restore this player's entry for a fixture on reload.
 export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get("userId");
+  const player = await currentPlayer();
   const fixtureId = Number(req.nextUrl.searchParams.get("fixtureId"));
-  if (!userId || !Number.isInteger(fixtureId)) {
-    return NextResponse.json({ error: "userId and fixtureId required" }, { status: 400 });
+  if (!Number.isInteger(fixtureId)) {
+    return NextResponse.json({ error: "fixtureId required" }, { status: 400 });
   }
+  if (!player) return NextResponse.json({ entry: null });
   const { data, error } = await supabase()
     .from("entries")
     .select()
-    .eq("user_id", userId)
+    .eq("player_id", player.id)
     .eq("fixture_id", fixtureId)
     .maybeSingle<EntryRow>();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

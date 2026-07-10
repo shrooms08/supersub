@@ -1,14 +1,16 @@
 "use client";
 
-// The Bench: today's and upcoming fixtures as cards. It exists to reach
-// the Match screen; one tap on a live (or replaying) card and you are in
-// the tunnel.
+// The Bench: the player chip up top, today's and upcoming fixtures as
+// cards. First visit runs signing day; there is no bench without a player.
 
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { PhaseBadge } from "@/components/PhaseBadge";
-import { fmtKickoffUtc } from "@/lib/format";
+import { PlayerChip } from "@/components/PlayerChip";
+import { SigningForm } from "@/components/SigningForm";
+import { fmtKickoffUtc, fmtPoints } from "@/lib/format";
+import { fetchPlayerSummary, type PlayerSummary } from "@/lib/player";
 import type { FixtureListing } from "@/lib/sources/types";
 
 interface FixturesResponse {
@@ -23,6 +25,17 @@ function BenchInner() {
   const speed = searchParams.get("speed");
   const [data, setData] = useState<FixturesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<PlayerSummary | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPlayerSummary().then((s) => {
+      if (!cancelled) setSummary(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,102 +71,133 @@ function BenchInner() {
     return `/match/${fixtureId}${qs ? `?${qs}` : ""}`;
   };
 
+  const player = summary?.player ?? null;
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-4 py-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="font-display text-3xl font-black uppercase tracking-tight text-chalk-50">
-          Super Sub
-        </h1>
-        <p className="text-sm text-chalk-400">
-          You are the substitute. Pick your moment, enter the pitch, and everything
-          after the board goes up is yours.
-        </p>
-        {data && <p className="whisper mt-1">Feed: {data.mode} mode</p>}
+      <header className="flex flex-col gap-4">
+        {player && summary && (
+          <div className="flex items-start justify-between gap-3">
+            <PlayerChip
+              player={player}
+              appearances={summary.appearances}
+              impactRating={summary.impactRating}
+            />
+          </div>
+        )}
+        <div className="flex flex-col gap-1">
+          <h1 className="font-display text-3xl font-black uppercase tracking-tight text-chalk-50">
+            Super Sub
+          </h1>
+          <p className="text-sm text-chalk-400">
+            You are the substitute. Pick your moment, enter the pitch, and everything
+            after the board goes up is yours.
+          </p>
+          {data && <p className="whisper mt-1">Feed: {data.mode} mode</p>}
+        </div>
       </header>
 
-      <section aria-label="Fixtures" className="flex flex-col gap-3">
-        {!data && !error && (
-          <>
-            {[0, 1, 2].map((i) => (
+      {summary && !player && (
+        <SigningForm
+          onSigned={(p) =>
+            setSummary({ player: p, appearances: 0, impactRating: null, played: {} })
+          }
+        />
+      )}
+
+      {player && (
+        <section aria-label="Fixtures" className="flex flex-col gap-3">
+          {!data && !error && (
+            <>
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-24 animate-pulse rounded-lg border border-pitch-700 bg-pitch-850"
+                />
+              ))}
+            </>
+          )}
+
+          {error && (
+            <div className="rounded-lg border border-pitch-600 bg-pitch-850 p-4">
+              <p className="text-sm text-chalk-300">The feed is down: {error}</p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="mt-3 rounded-md border border-chalk-600 px-3 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {data && data.fixtures.length === 0 && (
+            <div className="rounded-lg border border-pitch-700 bg-pitch-850 p-6 text-center">
+              <p className="text-sm text-chalk-300">Nothing on the fixture list right now.</p>
+              <p className="whisper mt-2">
+                {data.mode === "live"
+                  ? "Check back closer to kickoff."
+                  : "Add a replay bundle under data/replay to warm up."}
+              </p>
+            </div>
+          )}
+
+          {data?.fixtures.map(({ fixture, phase, mode: fxMode }) => {
+            const playable = phase === "live" || fxMode === "replay";
+            const points = summary?.played[fixture.fixtureId];
+            const played = points !== undefined;
+            const inner = (
+              <div className="flex items-center justify-between gap-4 p-4">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <p className="truncate text-lg font-bold text-chalk-50">
+                    {fixture.participant1}
+                    <span className="px-2 font-normal text-chalk-500">v</span>
+                    {fixture.participant2}
+                  </p>
+                  <p className="whisper">
+                    {fixture.competition || "Football"} · {fmtKickoffUtc(fixture.startTime)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <PhaseBadge phase={phase} replay={fxMode === "replay"} />
+                  {played ? (
+                    <span className="rounded-sm bg-pitch-700 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-chalk-100">
+                      You played this · {fmtPoints(points)} pts
+                    </span>
+                  ) : (
+                    playable && (
+                      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-chalk-300">
+                        {phase === "upcoming" && fxMode === "replay"
+                          ? "Kick it off"
+                          : phase === "finished" && fxMode === "replay"
+                            ? "Watch back"
+                            : "In the tunnel"}
+                        <span aria-hidden> &rsaquo;</span>
+                      </span>
+                    )
+                  )}
+                </div>
+              </div>
+            );
+            return playable ? (
+              <Link
+                key={fixture.fixtureId}
+                href={matchHref(fixture.fixtureId)}
+                className="rounded-lg border border-pitch-600 bg-pitch-850 transition-colors hover:border-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+              >
+                {inner}
+              </Link>
+            ) : (
               <div
-                key={i}
-                className="h-24 animate-pulse rounded-lg border border-pitch-700 bg-pitch-850"
-              />
-            ))}
-          </>
-        )}
-
-        {error && (
-          <div className="rounded-lg border border-pitch-600 bg-pitch-850 p-4">
-            <p className="text-sm text-chalk-300">The feed is down: {error}</p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-3 rounded-md border border-chalk-600 px-3 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-            >
-              Try again
-            </button>
-          </div>
-        )}
-
-        {data && data.fixtures.length === 0 && (
-          <div className="rounded-lg border border-pitch-700 bg-pitch-850 p-6 text-center">
-            <p className="text-sm text-chalk-300">Nothing on the fixture list right now.</p>
-            <p className="whisper mt-2">
-              {data.mode === "live"
-                ? "Check back closer to kickoff."
-                : "Add a replay bundle under data/replay to warm up."}
-            </p>
-          </div>
-        )}
-
-        {data?.fixtures.map(({ fixture, phase, mode: fxMode }) => {
-          const playable = phase === "live" || fxMode === "replay";
-          const inner = (
-            <div className="flex items-center justify-between gap-4 p-4">
-              <div className="flex min-w-0 flex-col gap-1">
-                <p className="truncate text-lg font-bold text-chalk-50">
-                  {fixture.participant1}
-                  <span className="px-2 font-normal text-chalk-500">v</span>
-                  {fixture.participant2}
-                </p>
-                <p className="whisper">
-                  {fixture.competition || "Football"} · {fmtKickoffUtc(fixture.startTime)}
-                </p>
+                key={fixture.fixtureId}
+                className="rounded-lg border border-pitch-700 bg-pitch-900 opacity-70"
+              >
+                {inner}
               </div>
-              <div className="flex shrink-0 flex-col items-end gap-2">
-                <PhaseBadge phase={phase} replay={fxMode === "replay"} />
-                {playable && (
-                  <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-chalk-300">
-                    {phase === "upcoming" && fxMode === "replay"
-                      ? "Kick it off"
-                      : phase === "finished" && fxMode === "replay"
-                        ? "Watch back"
-                        : "In the tunnel"}
-                    <span aria-hidden> &rsaquo;</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-          return playable ? (
-            <Link
-              key={fixture.fixtureId}
-              href={matchHref(fixture.fixtureId)}
-              className="rounded-lg border border-pitch-600 bg-pitch-850 transition-colors hover:border-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-            >
-              {inner}
-            </Link>
-          ) : (
-            <div
-              key={fixture.fixtureId}
-              className="rounded-lg border border-pitch-700 bg-pitch-900 opacity-70"
-            >
-              {inner}
-            </div>
-          );
-        })}
-      </section>
+            );
+          })}
+        </section>
+      )}
     </main>
   );
 }

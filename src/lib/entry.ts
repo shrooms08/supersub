@@ -7,6 +7,7 @@ import type { BreakdownItem } from "@/lib/state/scoring";
 export interface EntryRow {
   id: string;
   user_id: string;
+  player_id: string;
   fixture_id: number;
   mode: "replay" | "live";
   team: 1 | 2;
@@ -26,19 +27,21 @@ export interface EntryRow {
   final_score_team: number | null;
   final_score_opp: number | null;
   breakdown: BreakdownItem[] | null;
+  // The match report, stored once at resolution (Phase 2).
+  report: string | null;
+  report_source: "model" | "template" | null;
 }
 
-export async function fetchEntry(userId: string, fixtureId: number): Promise<EntryRow | null> {
-  const res = await fetch(`/api/enter?userId=${encodeURIComponent(userId)}&fixtureId=${fixtureId}`, {
-    cache: "no-store",
-  });
+// Identity travels in the signed player cookie; no ids in these payloads.
+
+export async function fetchEntry(fixtureId: number): Promise<EntryRow | null> {
+  const res = await fetch(`/api/enter?fixtureId=${fixtureId}`, { cache: "no-store" });
   if (!res.ok) return null;
   const body = (await res.json()) as { entry: EntryRow | null };
   return body.entry;
 }
 
 export async function postEnter(params: {
-  userId: string;
   fixtureId: number;
   team: 1 | 2;
   mode?: string | null;
@@ -49,7 +52,6 @@ export async function postEnter(params: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      userId: params.userId,
       fixtureId: params.fixtureId,
       team: params.team,
       mode: params.mode ?? undefined,
@@ -62,19 +64,17 @@ export async function postEnter(params: {
 }
 
 export async function postResolve(params: {
-  userId: string;
   fixtureId: number;
   mode?: string | null;
-}): Promise<{ entry?: EntryRow; error?: string; status: number }> {
+}): Promise<{ entry?: EntryRow; error?: string; newBadges?: string[]; status: number }> {
   const res = await fetch("/api/resolve", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      userId: params.userId,
       fixtureId: params.fixtureId,
       mode: params.mode ?? undefined,
     }),
   });
-  const body = (await res.json()) as { entry?: EntryRow; error?: string };
+  const body = (await res.json()) as { entry?: EntryRow; error?: string; newBadges?: string[] };
   return { ...body, status: res.status };
 }
