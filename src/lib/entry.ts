@@ -1,0 +1,80 @@
+// The entry row as persisted in Supabase (snake_case, straight from the
+// table) plus the client-side API helpers around it. Shared by route
+// handlers and components; contains no server-only imports.
+
+import type { BreakdownItem } from "@/lib/state/scoring";
+
+export interface EntryRow {
+  id: string;
+  user_id: string;
+  fixture_id: number;
+  mode: "replay" | "live";
+  team: 1 | 2;
+  team_name: string;
+  opponent_name: string;
+  entry_feed_ts: number;
+  entry_clock_seconds: number;
+  entry_minute: number;
+  score_team_at_entry: number;
+  score_opp_at_entry: number;
+  win_prob_at_entry: number;
+  multiplier: number;
+  created_at: string;
+  resolved_at: string | null;
+  window_points: number | null;
+  final_points: number | null;
+  final_score_team: number | null;
+  final_score_opp: number | null;
+  breakdown: BreakdownItem[] | null;
+}
+
+export async function fetchEntry(userId: string, fixtureId: number): Promise<EntryRow | null> {
+  const res = await fetch(`/api/enter?userId=${encodeURIComponent(userId)}&fixtureId=${fixtureId}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { entry: EntryRow | null };
+  return body.entry;
+}
+
+export async function postEnter(params: {
+  userId: string;
+  fixtureId: number;
+  team: 1 | 2;
+  mode?: string | null;
+  speed?: string | null;
+  feedTs?: number;
+}): Promise<{ entry?: EntryRow; error?: string; status: number }> {
+  const res = await fetch("/api/enter", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: params.userId,
+      fixtureId: params.fixtureId,
+      team: params.team,
+      mode: params.mode ?? undefined,
+      speed: params.speed !== undefined && params.speed !== null ? Number(params.speed) : undefined,
+      feedTs: params.feedTs,
+    }),
+  });
+  const body = (await res.json()) as { entry?: EntryRow; error?: string };
+  return { ...body, status: res.status };
+}
+
+export async function postResolve(params: {
+  userId: string;
+  fixtureId: number;
+  mode?: string | null;
+}): Promise<{ entry?: EntryRow; error?: string; status: number }> {
+  const res = await fetch("/api/resolve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: params.userId,
+      fixtureId: params.fixtureId,
+      mode: params.mode ?? undefined,
+    }),
+  });
+  const body = (await res.json()) as { entry?: EntryRow; error?: string };
+  return { ...body, status: res.status };
+}

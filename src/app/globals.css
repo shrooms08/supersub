@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark-only by design (see brand.md). One volt accent, everything else
+   grayscale. */
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-pitch-950 text-chalk-100 antialiased;
+}
+
+/* Hero numbers: the multiplier, the win probability, final points. */
+.hero-number {
+  @apply font-display font-black tracking-tight tabular-nums;
+}
+
+/* Whispering supporting text. */
+.whisper {
+  @apply text-[11px] uppercase tracking-[0.18em] text-chalk-500;
+}
+
+/* Win probability line drawing: the curve extends by animating dashoffset
+   is overkill for streaming data; we animate opacity + the live dot via
+   CSS and let the path re-render. Non-essential motion respects reduced
+   motion below. */
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-once,
+  .animate-cta-pulse,
+  .animate-var-flash,
+  .animate-live-dot {
+    animation: none !important;
+  }
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::selection {
+  background: rgba(214, 255, 63, 0.25);
+}
