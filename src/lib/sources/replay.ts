@@ -11,11 +11,18 @@
 //      the 5-minute odds interval endpoint), then cached to 2.
 //
 // A replay session maps feed time onto wall time: virtualNow =
-// startFeedTs + (wallNow - anchor) * speed. Sessions live in a module
-// global keyed by fixture id, so every viewer of a fixture shares one
-// timeline and reconnects resume where the match "is". This is in-memory
-// state: perfect for dev and demo, per-instance on serverless (documented
-// in the README).
+// startFeedTs + (wallNow - anchor) * speed. Sessions are keyed by
+// (fixtureId, anchor), where the anchor is the wall-clock ms at which the
+// replay started. The client mints an anchor once per browser tab and
+// sends it on every stream, enter, and resolve call, which buys three
+// properties at once:
+//   - every viewer (each judge) gets their own private timeline
+//   - a refresh resumes exactly where the match was (same anchor)
+//   - separate serverless instances derive the identical clock from the
+//     same anchor, so entry and resolution agree with the stream even
+//     when requests land on different lambdas
+// Calls without an anchor share one per-instance session (dev scripts,
+// Phase 1/2 smoke compatibility).
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -59,6 +66,11 @@ interface ReplayData {
   events: MatchEvent[]; // sorted by ts
   odds: OddsUpdate[]; // FT 1X2 only, sorted by ts
   firstEventTs: number;
+  // First kickoff event in the log. Histories do not always reach back to
+  // the official start time (Argentina v Egypt 18202701 begins at the
+  // second half), so the replay clock starts here, not at StartTime; the
+  // odds backfill still paints the full earlier curve instantly.
+  firstKickoffTs: number | null;
   endFeedTs: number;
 }
 
@@ -69,13 +81,25 @@ interface ReplaySession {
   startFeedTs: number;
 }
 
-// Survives Next.js dev-server HMR reloads.
+// Survives Next.js dev-server HMR reloads. Keyed "fixtureId:anchor".
 const globalStore = globalThis as unknown as {
-  __supersubReplay?: Map<number, ReplaySession>;
+  __supersubReplay?: Map<string, ReplaySession>;
   __supersubReplayData?: Map<number, ReplayData>;
 };
-const sessions = (globalStore.__supersubReplay ??= new Map<number, ReplaySession>());
+const sessions = (globalStore.__supersubReplay ??= new Map<string, ReplaySession>());
 const dataCache = (globalStore.__supersubReplayData ??= new Map<number, ReplayData>());
+
+function sessionKey(fixtureId: number, anchor?: number): string {
+  return `${fixtureId}:${anchor ?? "shared"}`;
+}
+
+// Anchors are client-supplied wall clocks: clamp to something sane so a
+// bad value cannot start a replay in the future or eons ago.
+function clampAnchor(anchor: number | undefined): number | undefined {
+  if (anchor === undefined || !Number.isFinite(anchor)) return undefined;
+  const now = Date.now();
+  return Math.min(now, Math.max(now - 7 * 86_400_000, Math.floor(anchor)));
+}
 
 function readDirData(dir: string, fixtureId: number): ReplayData | null {
   const base = path.join(dir, String(fixtureId));
@@ -102,6 +126,7 @@ function readDirData(dir: string, fixtureId: number): ReplayData | null {
     events,
     odds,
     firstEventTs: events[0].ts,
+    firstKickoffTs: events.find((e) => e.action === "kickoff")?.ts ?? null,
     endFeedTs: Math.max(events[events.length - 1].ts, odds.length ? odds[odds.length - 1].ts : 0),
   };
 }
@@ -172,6 +197,7 @@ async function fetchFromHistory(fixtureId: number): Promise<ReplayData> {
     events,
     odds,
     firstEventTs: events[0].ts,
+    firstKickoffTs: events.find((e) => e.action === "kickoff")?.ts ?? null,
     endFeedTs: Math.max(toMs, odds.length ? odds[odds.length - 1].ts : 0),
   };
 }
@@ -194,20 +220,33 @@ function virtualNow(s: ReplaySession): number {
   return Math.min(vt, s.data.endFeedTs + 5 * 60_000);
 }
 
-async function getSession(fixtureId: number, speed?: number): Promise<ReplaySession> {
-  let s = sessions.get(fixtureId);
+async function getSession(
+  fixtureId: number,
+  speed?: number,
+  anchor?: number
+): Promise<ReplaySession> {
+  const clamped = clampAnchor(anchor);
+  const key = sessionKey(fixtureId, clamped);
+  let s = sessions.get(key);
   if (!s) {
     const data = await loadData(fixtureId);
-    const kickoff = data.fixture.startTime;
+    // Start where coverage actually starts: the first kickoff event in
+    // the log (falls back to the official start time). Everything before
+    // it (pre-match odds, or a missing first half's market story) arrives
+    // in the connect backfill instead of being replayed in real time.
+    const coverageStart = data.firstKickoffTs ?? data.fixture.startTime;
     s = {
       data,
       speed: speed ?? DEFAULT_SPEED,
-      anchorWallMs: Date.now(),
-      startFeedTs: kickoff - PRE_ROLL_SECONDS * 1000,
+      anchorWallMs: clamped ?? Date.now(),
+      startFeedTs: coverageStart - PRE_ROLL_SECONDS * 1000,
     };
-    sessions.set(fixtureId, s);
+    sessions.set(key, s);
   } else if (speed !== undefined && speed !== s.speed) {
-    // Change pace without jumping the timeline.
+    // Change pace without jumping the timeline. Note this bends the pure
+    // anchor-to-clock mapping for this instance only; anchored sessions
+    // should keep one speed for the whole match (the UI never changes it
+    // mid-session).
     const vt = virtualNow(s);
     s.startFeedTs = vt;
     s.anchorWallMs = Date.now();
@@ -217,7 +256,9 @@ async function getSession(fixtureId: number, speed?: number): Promise<ReplaySess
 }
 
 export function resetReplaySession(fixtureId: number): void {
-  sessions.delete(fixtureId);
+  for (const key of [...sessions.keys()]) {
+    if (key.startsWith(`${fixtureId}:`)) sessions.delete(key);
+  }
 }
 
 function listBundledFixtureIds(): number[] {
@@ -236,8 +277,9 @@ function listBundledFixtureIds(): number[] {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export function createReplaySource(opts: { speed?: number } = {}): MatchSource {
+export function createReplaySource(opts: { speed?: number; anchor?: number } = {}): MatchSource {
   const requestedSpeed = opts.speed !== undefined ? clampSpeed(opts.speed) : undefined;
+  const requestedAnchor = opts.anchor;
 
   return {
     mode: "replay",
@@ -248,9 +290,13 @@ export function createReplaySource(opts: { speed?: number } = {}): MatchSource {
         try {
           const data = await loadData(id);
           // Phase relative to the replay timeline: no session yet means
-          // the replay has not kicked off; a running session is live until
-          // its virtual clock passes the last event.
-          const s = sessions.get(id);
+          // the replay has not kicked off; the freshest running session
+          // for the fixture is live until its clock passes the last event.
+          let s: ReplaySession | undefined;
+          for (const [key, candidate] of sessions) {
+            if (!key.startsWith(`${id}:`)) continue;
+            if (!s || candidate.anchorWallMs > s.anchorWallMs) s = candidate;
+          }
           const lastTs = data.events[data.events.length - 1].ts;
           const phase = !s ? "upcoming" : virtualNow(s) > lastTs ? "finished" : "live";
           out.push({ fixture: data.fixture, phase, mode: "replay" });
@@ -270,7 +316,7 @@ export function createReplaySource(opts: { speed?: number } = {}): MatchSource {
     },
 
     async getLog(fixtureId: number, upToFeedTs?: number): Promise<MatchLog> {
-      const s = await getSession(fixtureId, requestedSpeed);
+      const s = await getSession(fixtureId, requestedSpeed, requestedAnchor);
       const cutoff = upToFeedTs ?? virtualNow(s);
       return {
         fixture: s.data.fixture,
@@ -280,12 +326,12 @@ export function createReplaySource(opts: { speed?: number } = {}): MatchSource {
     },
 
     async feedNow(fixtureId: number): Promise<number> {
-      const s = await getSession(fixtureId, requestedSpeed);
+      const s = await getSession(fixtureId, requestedSpeed, requestedAnchor);
       return virtualNow(s);
     },
 
     async connect(fixtureId, cb: SourceCallbacks, signal: AbortSignal): Promise<void> {
-      const s = await getSession(fixtureId, requestedSpeed);
+      const s = await getSession(fixtureId, requestedSpeed, requestedAnchor);
       const vt = virtualNow(s);
 
       cb.onMeta({ mode: "replay", speed: s.speed, fixture: s.data.fixture, virtualNow: vt });

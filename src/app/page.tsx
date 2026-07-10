@@ -23,6 +23,8 @@ function BenchInner() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode");
   const speed = searchParams.get("speed");
+  // OBS-friendly capture mode: hides feed/mode chrome.
+  const clean = searchParams.get("clean") === "1";
   const [data, setData] = useState<FixturesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PlayerSummary | null>(null);
@@ -67,6 +69,7 @@ function BenchInner() {
     const params = new URLSearchParams();
     if (mode) params.set("mode", mode);
     if (speed) params.set("speed", speed);
+    if (clean) params.set("clean", "1");
     const qs = params.toString();
     return `/match/${fixtureId}${qs ? `?${qs}` : ""}`;
   };
@@ -93,7 +96,7 @@ function BenchInner() {
             You are the substitute. Pick your moment, enter the pitch, and everything
             after the board goes up is yours.
           </p>
-          {data && <p className="whisper mt-1">Feed: {data.mode} mode</p>}
+          {data && !clean && <p className="whisper mt-1">Feed: {data.mode} mode</p>}
         </div>
       </header>
 

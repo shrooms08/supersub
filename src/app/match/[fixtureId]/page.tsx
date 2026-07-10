@@ -7,7 +7,7 @@ export default function MatchPage({
   searchParams,
 }: {
   params: { fixtureId: string };
-  searchParams: { mode?: string; speed?: string };
+  searchParams: { mode?: string; speed?: string; clean?: string };
 }) {
   const fixtureId = Number(params.fixtureId);
   return (
@@ -15,6 +15,7 @@ export default function MatchPage({
       fixtureId={fixtureId}
       mode={searchParams.mode ?? null}
       speed={searchParams.speed ?? null}
+      clean={searchParams.clean === "1"}
     />
   );
 }

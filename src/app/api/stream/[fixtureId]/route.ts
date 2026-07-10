@@ -18,6 +18,10 @@ import type { SourceCallbacks } from "@/lib/sources/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Streaming replays outlive default serverless limits; the browser's
+// EventSource reconnects when the function recycles, and the anchor-keyed
+// session makes the reconnect land exactly where the match was.
+export const maxDuration = 300;
 
 export async function GET(
   req: NextRequest,
@@ -33,7 +37,7 @@ export async function GET(
   if (mode === "replay" && search.get("restart") === "1") {
     resetReplaySession(fixtureId);
   }
-  const source = getSource({ mode, speed: search.get("speed") });
+  const source = getSource({ mode, speed: search.get("speed"), anchor: search.get("anchor") });
 
   const encoder = new TextEncoder();
   const abort = new AbortController();

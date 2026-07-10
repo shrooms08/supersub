@@ -1,129 +1,142 @@
-# Super Sub (Phases 1 and 2: the core loop, then the career)
+# Super Sub
 
-You are the fantasy substitute. You watch a real World Cup match and you
-have exactly one action: ENTER THE PITCH at a minute of your choosing.
-From that instant until the final whistle, real match events become your
-stat line. Come on while your side is cruising and you carry a 1.0x
-multiplier; come on when it looks lost and you carry up to 10.0x.
+**You are the substitute. Enter a real World Cup match at the minute of
+your choosing; the worse it looks when you step on, the bigger the
+multiplier you carry to the final whistle.**
 
-Phase 0 was an API spike against TxLINE (see `../supersub-spike`,
-`FINDINGS.md`); its findings drive the architecture here. Phase 1 built
-the playable core loop. Phase 2 wraps identity, persistence, and
-narrative around it: a created-once player (signed anonymous cookie, no
-accounts), the Career page (`/career`) with Impact Rating, the record,
-the badge cabinet, and match history, plus a stored match report per
-resolved entry written by `claude-sonnet-4-6` (deterministic template
-fallback when no API key is set). The match loop itself is untouched.
+## Thirty seconds
 
-## Quick start (replay mode, works offline against bundled fixtures)
+Super Sub turns live football into a one-decision game. You watch a
+real match with a live win-probability curve drawn from TxLINE's
+demargined odds. At any minute you press ENTER THE PITCH. From that
+instant, real match events become your stat line: goals for and against
+your side, clean sheets, the result at the whistle. Your points are
+multiplied by how unlikely your side's win looked at the moment you
+entered, from 1.0x (cruising) to 10.0x (lost cause). Every appearance
+feeds a persistent career: an Impact Rating, a badge cabinet, form, and
+a match report written about YOU, by name and shirt number, in
+broadsheet prose. One decision, real stakes in points, a career of
+receipts.
+
+## How it works
+
+**The loop.** Pick a side, watch the curve, enter once. Window scoring
+(all constants in `src/lib/config/scoring.ts`): goal for your side
++100, goal conceded -50, nothing conceded in your window +40, win at
+the whistle +100, draw salvaged from behind +60. Final score =
+max(0, window points) x your locked multiplier.
+
+**The multiplier.** Locked at the entry instant from your side's win
+probability p: 1.0x at p >= 0.75, 10.0x at p <= 0.05, linear between.
+Displayed as tiers: Safe Hands, Squad Rotation, The Gamble, Miracle
+Territory. Probability comes from TxLINE's own demargined consensus
+prices, so the house number and your number agree.
+
+**The career.** Identity is a signed anonymous cookie, no accounts.
+Each resolved entry updates appearances, Impact Rating (rolling average
+of final scores), form (window W/D/L), and a six-badge cabinet
+(including Miracle Worker for winning a window entered at p <= 0.10,
+and Wounded for conceding three, because self-deprecation is part of
+football). At resolution, claude-sonnet-4-6 writes a 60-90 word match
+report from the entry's structured facts only, with a deterministic
+template fallback; it is stored once and never regenerated.
+
+## TxLINE integration architecture
+
+Built on the findings of a dedicated API spike (Phase 0). The parts
+that matter:
+
+- **One normalization layer** (`src/lib/feed/normalize.ts`): the only
+  module that touches raw feed payloads. It tolerates both PascalCase
+  (historical endpoints, observed SSE) and camelCase (spec schemas) and
+  encodes the feed's most dangerous quirk: inside Score/Stats maps an
+  absent key means ZERO, not "unchanged".
+- **Event-sourced state** (`src/lib/state/fold.ts`): score, stats,
+  ticker, and match phase are always a pure fold of the ordered event
+  log; there are no incremental tallies anywhere. Events correlate by
+  action id across their unconfirmed/confirmed lifecycle.
+- **VAR rollback**: `action_discarded` erases by action id inside the
+  fold, so an overturned goal corrects the score, the provisional
+  points, and the UI in the same tick it arrives. France v Morocco's
+  real 49' VAR erasure is the bundled proof.
+- **Stream plus backfill reconstruction**: SSE streams are primary; a
+  join or reconnect first rebuilds state from the per-action snapshot
+  endpoint plus sealed 5-minute interval history, then trusts the
+  stream. Odds snapshots returning `[]` (a real 5-minute cache
+  rollover flake) are retried once and tolerated.
+- **Win probability** (`src/lib/state/winprob.ts`): prefers the feed's
+  demargined `Pct`, falls back to normalized inverse 1X2 odds, holds
+  the last value through market suspensions and flags them.
+- **Match phase** ignores the feed's `GameState` field entirely (stuck
+  on "scheduled" for a whole finished match); phase derives from
+  kickoff time and event flow with a documented finished heuristic.
+
+## Solana integration
+
+TxLINE access is purchased on-chain. The Phase 0 spike ran the full
+flow on **devnet** against program
+`6pW64gN1s2uqjHkn1unFeEjAwJkPGHoppGvS715wyP2J`: guest JWT, reading the
+on-chain pricing matrix, creating the Token-2022 associated token
+account, sending the `subscribe` instruction, then activating the API
+token by signing `txSig::jwt` with the wallet key (nacl detached
+signature). Confirmed subscribe transaction:
+
+```
+38Fs8UBvaUPXoXQ3fmrUqYayaaq633ceHYniN8FyP6y1HyLrHpWvcuSNPH3LpdGarWPWkEYzLZQLSoP7jZGnoAE
+```
+
+The devnet pricing matrix exposes a free real-time tier (service level
+1, sampling 0s), which this build uses. On mainnet the same code path
+targets service level 12 (real-time) with a funded wallet. The app
+itself consumes the resulting `TXLINE_JWT` and `TXLINE_API_TOKEN` via
+env vars; the guest JWT renews itself on 401.
+
+## Stack
+
+Next.js 14 (App Router, TypeScript, route handlers only on the server),
+Tailwind, Supabase (players, entries, badges; one entry per player per
+fixture enforced by constraint), Anthropic API (match reports), Vercel
+(single region, `fra1`). No other services.
+
+## Running locally
 
 ```
 npm install
-# point .env.local at your Supabase project (see .env.example), then apply
-# the migrations in supabase/migrations/ in order via the dashboard SQL
-# editor, supabase CLI ("supabase db push"), or any Postgres client
+# copy .env.example to .env.local and fill in Supabase + (optionally)
+# TxLINE tokens and ANTHROPIC_API_KEY; apply supabase/migrations/ in
+# order (dashboard SQL editor or supabase db push)
 npm run dev
 ```
 
-Open http://localhost:3000. Sign your forms (name, shirt number,
-position; the crest is generated from a hash of name + number). The Bench
-lists France v Morocco (18209181) and Switzerland v Colombia (18202783),
-both real matches bundled under `data/replay/`. Tap one: the replay
-session kicks off at `REPLAY_SPEED`x (default 30x). Pick a side, enter
-the pitch, watch provisional points move (France v Morocco includes a
-real VAR-erased goal at 49'), and collect your resolved score, badges,
-and match report at full time. Your career lives at `/career`.
+Replay mode works offline out of the box: France v Morocco (18209181)
+and Argentina v Egypt (18202701) ship in `data/replay/`. Verification:
+`npm run test:fold`, `npm run test:badges`, `npm run smoke`,
+`npm run smoke:career` (see SMOKE.md, SMOKE2.md, SMOKE3.md for captured
+runs). Demo choreography lives in DEMO.md.
 
-Useful query params on the match screen:
+## Replay mode, honestly
 
-- `?speed=60` replay pace, 1 to 60 feed-seconds per wall second
-- `?mode=live` force live mode for this request (env sets the default)
+The World Cup ends; the product does not get to pretend otherwise.
+Replay mode (`?mode=replay`, the default after the tournament) replays
+REAL recorded TxLINE data, byte for byte the same payloads the live
+feed served, through exactly the same normalization, folding, scoring,
+and persistence pipeline as live mode; the only different code is the
+clock that paces event delivery. Live mode (`?mode=live`) connects the
+same build to the real SSE streams with no code changes. Every replay
+is labelled REPLAY in the UI. Nothing in the demo is synthetic: the VAR
+overturn you will see actually happened on 2026-07-09.
 
-To restart a replay from kickoff, hit
-`/api/stream/18209181?mode=replay&restart=1` once (curl or browser tab).
+Judges: start at `/judges`.
 
-## Modes
+## Known constraints
 
-`SUPERSUB_MODE` picks the default source; `?mode=` overrides per request.
-The entire app runs identically against both sources; they implement one
-internal interface (`src/lib/sources/types.ts`).
-
-- **replay**: replays a finished fixture from the TxLINE historical
-  endpoints as if live. France v Morocco ships in the repo so this works
-  with no tokens. Any other fixture from the last ~2 weeks is fetched on
-  demand (needs tokens) and cached under `.cache/replay/`.
-- **live**: SSE streams from TxLINE (scores + odds), with join/reconnect
-  state reconstruction via the per-action snapshot endpoint plus sealed
-  5-minute interval backfill. Needs `TXLINE_JWT` and `TXLINE_API_TOKEN`
-  (run the Phase 0 spike's `npm run auth` once and copy them from its
-  `.tokens.json`).
-
-## Architecture (the parts that follow from the spike findings)
-
-- `src/lib/feed/normalize.ts` is the ONLY module that touches raw feed
-  shapes. It tolerates PascalCase and camelCase key casing and encodes
-  the feed's most dangerous quirk: inside Score/Stats maps an absent key
-  means ZERO, not "unchanged".
-- `src/lib/state/fold.ts` is event-sourced match state: score, counters,
-  ticker, and phase are always a pure fold of the ordered event log.
-  VAR rollback works because `action_discarded` erases by action id
-  inside the fold; there are no incremental tallies anywhere.
-- Match phase ignores the feed's `GameState` field entirely (observed
-  stuck on "scheduled" for a whole finished match). Derivation and the
-  finished heuristic are documented in the fold.
-- `src/lib/state/winprob.ts` prefers the feed's own demargined `Pct`,
-  falls back to normalized inverse 1X2 odds, and treats empty price
-  arrays as "market suspended, hold last value".
-- Scoring constants live in `src/lib/config/scoring.ts` and nowhere else.
-  The same pure scoring function produces the client's provisional points
-  and the server's resolution; resolution is computed ONLY from the final
-  event-sourced state at the whistle.
-- Supabase holds players, entries with their resolved results and stored
-  reports, and the badge cabinet (`players`, `entries`, `player_badges`).
-  One entry per player per fixture is a database unique constraint.
-- Identity (Phase 2): `src/lib/server/playerAuth.ts` signs the anonymous
-  player id into an httpOnly cookie (HMAC, `SUPERSUB_SESSION_SECRET`).
-- Career logic is pure and unit-tested: badges in
-  `src/lib/career/badges.ts`, aggregates in `src/lib/career/stats.ts`,
-  multiplier display tiers in `src/lib/config/scoring.ts`.
-- Match reports: `src/lib/server/report.ts` builds structured facts from
-  the resolved entry only, calls `claude-sonnet-4-6` via the official
-  SDK, and falls back to a deterministic template on any failure. Stored
-  once at resolution inside the same guarded update; never regenerated.
-
-## Verification
-
-- `npm run test:fold` folds the real 1116-event France v Morocco log and
-  checks the 2-0 final, the VAR rollback at Seq 534/535, phase
-  derivation, the probability jump across the 60' goal, and the scoring
-  table (16 checks).
-- `npm run smoke` drives the full loop over HTTP against a running dev
-  server: fixtures, stream, enter (plus duplicate rejection), the VAR
-  sequence, resolve, and idempotence. See `SMOKE.md` for a captured run.
-- `npm run test:badges` unit-tests the badge cabinet against constructed
-  resolved entries: 30 checks including the Miracle Worker boundary at
-  p = 0.10, Iron Nerve at minute 85, Comeback King from-behind detection,
-  and the multiplier tier boundaries.
-- `npm run smoke:career` drives the Phase 2 fresh-user flow: create a
-  player, play two replayed matches end to end, and verify badges, form,
-  Impact Rating, stored reports, and the duplicate-player guard. See
-  `SMOKE2.md` for a captured run including the server-restart
-  persistence check and the LLM fallback proof.
-
-## Deploy notes
-
-Server code is all route handlers, deployable to Vercel as-is
-(`next.config.mjs` traces `data/replay/` into the serverless bundle).
-One caveat for hosted REPLAY demos: replay sessions live in module-global
-memory, so on serverless each instance has its own virtual clock. Perfect
-for `npm run dev` and single-instance demos; a shared clock (KV) is a
-later-phase concern. LIVE mode has no such state and scales normally.
-
-## Known gaps, on purpose (Phase 1 scope)
-
-- The live source's snapshot+interval reconstruction was verified against
-  a finished match and a pre-match fixture; verify against a genuinely
-  in-play match before demo day (spike risk 4).
-- Anonymous localStorage identity; permissive RLS policies to match.
-- No shots/possession in scoring (feed has no cumulative counters for
-  them; spike risk 7).
+- Replay session clocks are in-memory per server instance; the
+  deployment is pinned to one region and each browser tab carries a
+  timeline anchor, so a refresh (or a request landing on a second
+  instance) reconstructs the same match position. See
+  `src/lib/sources/replay.ts` for the mechanism.
+- The live source's mid-match join was verified against finished and
+  pre-match fixtures; a genuinely in-play verification needs a live
+  fixture window.
+- Anonymous cookie identity with permissive RLS, a deliberate
+  hackathon posture; tighten with real auth.

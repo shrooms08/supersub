@@ -21,10 +21,18 @@ import type { EntryRow } from "@/lib/entry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Resolution includes the one-shot report generation (up to a 20s model
+// call); give it room beyond the default function limit.
+export const maxDuration = 60;
 
 interface ResolveBody {
   fixtureId?: number;
   mode?: string;
+  // Replay timeline anchor and speed (see src/lib/sources/replay.ts).
+  // Both are needed: a fresh serverless instance reconstructs the session
+  // from them, and the wrong speed puts the virtual clock mid-match.
+  anchor?: number;
+  speed?: number;
 }
 
 export async function POST(req: NextRequest) {
@@ -54,7 +62,11 @@ export async function POST(req: NextRequest) {
   if (!entry) return NextResponse.json({ error: "No entry for this fixture." }, { status: 404 });
   if (entry.resolved_at) return NextResponse.json({ entry, newBadges: [] });
 
-  const source = getSource({ mode: body.mode ?? entry.mode });
+  const source = getSource({
+    mode: body.mode ?? entry.mode,
+    speed: body.speed !== undefined ? String(body.speed) : null,
+    anchor: body.anchor ?? null,
+  });
 
   try {
     const feedNow = await source.feedNow(fixtureId!);

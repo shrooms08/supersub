@@ -47,6 +47,7 @@ export async function postEnter(params: {
   mode?: string | null;
   speed?: string | null;
   feedTs?: number;
+  anchor?: number | null;
 }): Promise<{ entry?: EntryRow; error?: string; status: number }> {
   const res = await fetch("/api/enter", {
     method: "POST",
@@ -57,6 +58,7 @@ export async function postEnter(params: {
       mode: params.mode ?? undefined,
       speed: params.speed !== undefined && params.speed !== null ? Number(params.speed) : undefined,
       feedTs: params.feedTs,
+      anchor: params.anchor ?? undefined,
     }),
   });
   const body = (await res.json()) as { entry?: EntryRow; error?: string };
@@ -66,6 +68,8 @@ export async function postEnter(params: {
 export async function postResolve(params: {
   fixtureId: number;
   mode?: string | null;
+  anchor?: number | null;
+  speed?: number | null;
 }): Promise<{ entry?: EntryRow; error?: string; newBadges?: string[]; status: number }> {
   const res = await fetch("/api/resolve", {
     method: "POST",
@@ -73,6 +77,8 @@ export async function postResolve(params: {
     body: JSON.stringify({
       fixtureId: params.fixtureId,
       mode: params.mode ?? undefined,
+      anchor: params.anchor ?? undefined,
+      speed: params.speed ?? undefined,
     }),
   });
   const body = (await res.json()) as { entry?: EntryRow; error?: string; newBadges?: string[] };

@@ -29,6 +29,8 @@ interface EnterBody {
   mode?: string;
   speed?: number;
   feedTs?: number;
+  // Replay timeline anchor (see src/lib/sources/replay.ts).
+  anchor?: number;
 }
 
 export async function POST(req: NextRequest) {
@@ -57,6 +59,7 @@ export async function POST(req: NextRequest) {
   const source = getSource({
     mode: body.mode ?? null,
     speed: body.speed !== undefined ? String(body.speed) : null,
+    anchor: body.anchor ?? null,
   });
 
   try {

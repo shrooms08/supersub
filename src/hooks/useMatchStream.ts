@@ -25,7 +25,7 @@ export interface MatchStream {
 
 export function useMatchStream(
   fixtureId: number,
-  opts: { mode?: string | null; speed?: string | null; restart?: boolean } = {}
+  opts: { mode?: string | null; speed?: string | null; restart?: boolean; anchor?: number | null } = {}
 ): MatchStream {
   const eventsRef = useRef<Map<number, MatchEvent>>(new Map());
   const oddsRef = useRef<Map<string, OddsUpdate>>(new Map());
@@ -48,6 +48,7 @@ export function useMatchStream(
     if (opts.mode) params.set("mode", opts.mode);
     if (opts.speed) params.set("speed", opts.speed);
     if (opts.restart) params.set("restart", "1");
+    if (opts.anchor) params.set("anchor", String(opts.anchor));
     const qs = params.toString();
     const es = new EventSource(`/api/stream/${fixtureId}${qs ? `?${qs}` : ""}`);
 
@@ -104,7 +105,7 @@ export function useMatchStream(
     };
     // opts.restart is only meaningful on first mount of a target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fixtureId, opts.mode, opts.speed]);
+  }, [fixtureId, opts.mode, opts.speed, opts.anchor]);
 
   const events = useMemo(
     () => [...eventsRef.current.values()].sort((a, b) => a.seq - b.seq),

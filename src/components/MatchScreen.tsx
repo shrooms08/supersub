@@ -28,12 +28,29 @@ export function MatchScreen({
   fixtureId,
   mode,
   speed,
+  clean = false,
 }: {
   fixtureId: number;
   mode: string | null;
   speed: string | null;
+  clean?: boolean;
 }) {
-  const stream = useMatchStream(fixtureId, { mode, speed });
+  // The replay timeline anchor: minted once per browser tab, persisted in
+  // sessionStorage, sent on every stream/enter/resolve call. Each tab gets
+  // its own timeline; a refresh resumes exactly where the match was, even
+  // if the request lands on a different server instance. Harmless in live
+  // mode (ignored server-side).
+  const [anchor] = useState<number | null>(() => {
+    if (typeof window === "undefined") return null;
+    const key = `supersub:replay-anchor:${fixtureId}`;
+    const stored = window.sessionStorage.getItem(key);
+    if (stored && Number.isFinite(Number(stored))) return Number(stored);
+    const minted = Date.now();
+    window.sessionStorage.setItem(key, String(minted));
+    return minted;
+  });
+
+  const stream = useMatchStream(fixtureId, { mode, speed, anchor });
   const { meta, state, probSeries, feedNow } = stream;
 
   const [player, setPlayer] = useState<PlayerRow | null>(null);
@@ -133,7 +150,7 @@ export function MatchScreen({
     if (!player || entering) return;
     setEntering(true);
     setEnterError(null);
-    const res = await postEnter({ fixtureId, team, mode, speed, feedTs: feedNow || undefined });
+    const res = await postEnter({ fixtureId, team, mode, speed, feedTs: feedNow || undefined, anchor });
     setEntering(false);
     if (res.entry) {
       setEntry(res.entry);
@@ -141,7 +158,7 @@ export function MatchScreen({
     } else {
       setEnterError(res.error ?? "Could not get you on. Try again.");
     }
-  }, [player, entering, fixtureId, team, mode, speed, feedNow]);
+  }, [player, entering, fixtureId, team, mode, speed, feedNow, anchor]);
 
   // Resolution at the derived whistle: idempotent, retried while the
   // source settles.
@@ -151,7 +168,12 @@ export function MatchScreen({
     resolveInFlight.current = true;
     setResolving(true);
     setResolveError(null);
-    const res = await postResolve({ fixtureId, mode: mode ?? entry.mode });
+    const res = await postResolve({
+      fixtureId,
+      mode: mode ?? entry.mode,
+      anchor,
+      speed: meta?.speed ?? null,
+    });
     setResolving(false);
     resolveInFlight.current = false;
     if (res.entry?.resolved_at) {
@@ -163,7 +185,7 @@ export function MatchScreen({
     } else {
       setResolveError(res.error ?? "Could not settle the score.");
     }
-  }, [player, entry, fixtureId, mode]);
+  }, [player, entry, fixtureId, mode, anchor, meta?.speed]);
 
   useEffect(() => {
     if (phase === "finished" && entry && !entry.resolved_at) void resolve();
@@ -206,10 +228,12 @@ export function MatchScreen({
         >
           &lsaquo; The bench
         </Link>
-        <p className="whisper">
-          {meta.mode === "replay" ? `Replay ${meta.speed}x` : "Live feed"}
-          {!stream.connected && " · reconnecting"}
-        </p>
+        {!clean && (
+          <p className="whisper">
+            {meta.mode === "replay" ? `Replay ${meta.speed}x` : "Live feed"}
+            {!stream.connected && " · reconnecting"}
+          </p>
+        )}
       </header>
 
       {stream.fault && (

@@ -11,11 +11,17 @@ export function resolveMode(param?: string | null): Mode {
   return raw === "live" ? "live" : "replay";
 }
 
-export function getSource(opts: { mode?: string | null; speed?: string | null } = {}): MatchSource {
+export function getSource(
+  opts: { mode?: string | null; speed?: string | null; anchor?: string | number | null } = {}
+): MatchSource {
   const mode = resolveMode(opts.mode);
   if (mode === "live") return createLiveSource();
   const speed = opts.speed !== undefined && opts.speed !== null ? clampSpeed(Number(opts.speed)) : undefined;
-  return createReplaySource({ speed });
+  const anchor =
+    opts.anchor !== undefined && opts.anchor !== null && opts.anchor !== ""
+      ? Number(opts.anchor)
+      : undefined;
+  return createReplaySource({ speed, anchor });
 }
 
 export { resetReplaySession };
