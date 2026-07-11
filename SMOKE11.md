@@ -136,3 +136,28 @@ carries the judges' path, so the deployed loop is never at risk.
 - `src/app/api/schedule/route.ts` (new)
 - `src/app/page.tsx` (bench rebuilt)
 - `src/components/FixtureCard.tsx` (final score, pens line, countdown)
+
+## 4. Deployed and verified in production
+
+Committed `f2e82dd`, deployed to production (Vercel, deployment
+`supersub-b4c1qe7rf`) at ~19:18 UTC, ahead of the 21:15 deadline. The
+`vercel --prod` deploy reassigned the project's configured aliases; the
+canonical `supersub-tau.vercel.app` was not in that set and was
+re-pointed at the new build explicitly.
+
+```
+GET https://supersub-tau.vercel.app/api/schedule -> 200 in 0.90s
+  error: null   liveNow: false
+  TODAY:   Norway v England [upcoming]           (kickoff 21:00 UTC tonight)
+  RESULTS: 12, incl. Argentina 3-2 Egypt and Switzerland 0-0 (pens 4-3)
+  REPLAYS: 3 bundled
+
+Deployed loop unaffected:
+  GET /                        -> 200
+  GET /api/fixtures            -> 200   (older endpoint, untouched)
+  GET /match/18209181?mode=replay -> 200
+```
+
+Production assertions (Norway v England in TODAY, Argentina 3-2 Egypt
+and Switzerland pens 4-3 in RESULTS, three replays) all pass against
+the live canonical URL.
