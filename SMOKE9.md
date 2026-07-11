@@ -462,3 +462,51 @@ afterward; the roster is back to exactly minos.
 - `scripts/test-fold.ts`, `scripts/test-badges.ts` (new-scale assertions)
 - `README.md`, `DEMO.md`, `SHOTLIST.md`, `SMOKE.md`, `SMOKE2.md`,
   `SMOKE3.md`, `SMOKE7.md`, `SMOKE8.md` (old-scale numbers updated)
+
+## 9. Badge backfill (general re-evaluation, 2026-07-11)
+
+The fold fix corrected the at-entry and final scores on stored entries,
+but badges are awarded once at resolution and were never re-evaluated,
+so minos was missing a badge his corrected 18202701 entry now earns.
+`scripts/backfill-badges.ts` (new, general, not a one-off) replays the
+exact resolution-time logic in `src/lib/career/badges.ts` over every
+stored resolved entry, in resolution order so the appearance-gated
+badges (first_whistle, ever_present) evaluate the same way they would
+live. It awards what now qualifies and only LISTS anything that would
+be revoked; revocation is never automatic.
+
+Dry run over all resolved entries (`--from`, compute-only, emits SQL):
+
+```
+[backfill] 3 resolved entries, 1 held badges (compute only)
+  minos
+    AWARD  comeback_king  (earned by entry 5002b6ad, fixture 18202701)
+```
+
+One award, no revocations. Executed on the privileged path; minos's
+cabinet now:
+
+```
+first_whistle  (18209181, entered 5',  earned 08:24)
+comeback_king  (18202701, entered 81', earned on backfill)
+```
+
+comeback_king is correct: the 18202701 entry reads behind at entry
+(1-2) and a 3-2 win, which is exactly the badge's rule (behind at
+entry, draw or better at the whistle). A re-run after the award reports
+"no changes", so the tool is idempotent.
+
+miracle_worker check (requested): the badge needs win probability at
+entry <= 0.10 and a won window. The entry that would earn it was the
+73' Argentina entry priced at 4.5% (p 0.04505) belonging to the
+recreated MINOS #7, which was purged in item 8; it no longer exists.
+Among minos's surviving entries the nearest is the 81' entry on the
+same fixture at 11.8% (p 0.11773), which is above the 0.10 line, so
+miracle_worker does not trigger and none was awarded. No other player
+holds any entry, so the roster-wide delta is exactly the one
+comeback_king.
+
+### Files (item 9)
+
+- `scripts/backfill-badges.ts` (new: general badge re-evaluation,
+  award-only, revocations listed for approval)
