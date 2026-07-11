@@ -18,6 +18,7 @@ import { FixtureCard, type FixtureFinal } from "@/components/FixtureCard";
 import { TheTable } from "@/components/TheTable";
 import { LegendaryEntries } from "@/components/LegendaryEntries";
 import { SigningForm } from "@/components/SigningForm";
+import { ClaimLegend } from "@/components/ClaimLegend";
 import { teamCode } from "@/components/Scoreboard";
 import { fetchPlayerSummary, type PlayerSummary } from "@/lib/player";
 import type { Fixture, Phase } from "@/lib/feed/types";
@@ -324,27 +325,12 @@ function BenchInner() {
 
               <TheTable rows={matchday?.table ?? []} />
 
-              <div
-                className="rounded-[14px] p-4 text-center"
-                style={{
-                  border: "1px dashed rgba(200,255,0,.35)",
-                  background: "linear-gradient(180deg, rgba(200,255,0,.05), transparent)",
-                }}
-              >
-                <p className="font-label text-[8px] font-bold uppercase tracking-[0.2em] text-volt">
-                  Coming at full time
-                </p>
-                <p className="hero-number mt-1.5 text-2xl uppercase leading-none text-chalk-50">
-                  Claim your legend
-                </p>
-                <p className="mt-1.5 font-label text-[10px] leading-relaxed text-chalk-400">
-                  Mint your career, appearances, badges and match reports, permanently on
-                  Solana when the tournament ends.
-                </p>
-                <p className="mt-2.5 inline-flex items-center gap-1.5 rounded-[20px] border border-white/10 px-3 py-[7px] font-label text-[9px] font-bold uppercase tracking-[0.14em] text-chalk-600">
-                  &#9678; Solana · Locked until FT
-                </p>
-              </div>
+              <ClaimLegend
+                variant="bench"
+                claim={summary?.claim ?? null}
+                hasPlayer={Boolean(player)}
+                onChanged={() => void loadIdentity()}
+              />
             </div>
           </div>
         </>

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo, Pirata_One, Saira_Condensed, Zilla_Slab } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
 
 // The canonical type system (docs/design/SuperSub.dc.html), all four faces
 // self-hosted at build time via next/font; no runtime font requests.
@@ -51,7 +52,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       lang="en"
       className={`dark ${saira.variable} ${zilla.variable} ${pirata.variable} ${archivo.variable}`}
     >
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

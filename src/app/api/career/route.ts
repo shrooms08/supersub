@@ -6,6 +6,7 @@ import { supabase } from "@/lib/server/supabase";
 import { currentPlayer } from "@/lib/server/playerAuth";
 import { careerRecord } from "@/lib/career/stats";
 import { BADGES } from "@/lib/career/badges";
+import { claimStateFor } from "@/lib/player";
 import type { EntryRow } from "@/lib/entry";
 
 export const runtime = "nodejs";
@@ -49,5 +50,5 @@ export async function GET() {
 
   const history = (entries ?? []).filter((e) => e.resolved_at !== null);
 
-  return NextResponse.json({ player, record, badges, history });
+  return NextResponse.json({ player, record, badges, history, claim: claimStateFor(player) });
 }

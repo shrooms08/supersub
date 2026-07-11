@@ -14,7 +14,8 @@ import { PixelCrest } from "@/components/PixelCrest";
 import { FormChips } from "@/components/FormChips";
 import { fmtMultiplier, fmtPoints } from "@/lib/format";
 import { tierForMultiplier } from "@/lib/config/scoring";
-import { POSITION_GROUPS, POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
+import { POSITION_GROUPS, POSITION_LABELS, type ClaimState, type PlayerRow, type Position } from "@/lib/player";
+import { ClaimLegend } from "@/components/ClaimLegend";
 import { windowResult, type WindowResult } from "@/lib/career/window";
 import type { CareerRecord } from "@/lib/career/stats";
 import type { EntryRow } from "@/lib/entry";
@@ -32,6 +33,7 @@ interface CareerPayload {
   record: CareerRecord;
   badges: BadgeState[];
   history: EntryRow[];
+  claim?: ClaimState;
 }
 
 // Cabinet glyphs, one per badge, from the reference's glyph set.
@@ -128,7 +130,7 @@ export default function CareerPage() {
     );
   }
 
-  const { player, record, badges, history } = data;
+  const { player, record, badges, history, claim } = data;
   const earnedCount = badges.filter((b) => b.earnedAt !== null).length;
   const bestMultiplier = history.length
     ? Math.max(...history.map((h) => h.multiplier))
@@ -238,6 +240,14 @@ export default function CareerPage() {
           ))}
         </div>
       </section>
+
+      {/* Claim Your Legend (inert while the feature is dark) */}
+      <ClaimLegend
+        variant="career"
+        claim={claim ?? null}
+        hasPlayer={Boolean(player)}
+        onChanged={() => void load()}
+      />
 
       {/* Badge cabinet */}
       <section aria-label="Honours board">

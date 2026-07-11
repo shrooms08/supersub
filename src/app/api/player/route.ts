@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/server/supabase";
 import { currentPlayer, setPlayerCookie } from "@/lib/server/playerAuth";
 import { careerRecord } from "@/lib/career/stats";
-import { POSITIONS, validateSurname, type PlayerRow, type Position } from "@/lib/player";
+import { claimStateFor, POSITIONS, validateSurname, type PlayerRow, type Position } from "@/lib/player";
 import type { EntryRow } from "@/lib/entry";
 
 export const runtime = "nodejs";
@@ -35,6 +35,7 @@ export async function GET() {
     appearances: record.appearances,
     impactRating: record.impactRating,
     played,
+    claim: claimStateFor(player),
   });
 }
 

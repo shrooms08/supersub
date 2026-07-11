@@ -55,6 +55,31 @@ export interface PlayerRow {
   position: Position;
   shirt_number: number;
   created_at: string;
+  // Claim Your Legend (nullable; anonymous players have neither). A bound
+  // Privy identity and its Solana wallet; claiming is permanent.
+  privy_user_id?: string | null;
+  wallet_address?: string | null;
+}
+
+// The claim state the client renders, derived from the player row. The
+// wallet address is a public key, so exposing it is safe; the email, if
+// any, comes from the signed-in Privy user client-side, never stored.
+export interface ClaimState {
+  claimed: boolean;
+  walletAddress: string | null;
+}
+
+export function claimStateFor(player: PlayerRow | null): ClaimState {
+  return {
+    claimed: Boolean(player?.privy_user_id),
+    walletAddress: player?.wallet_address ?? null,
+  };
+}
+
+// Masked wallet for display, GCLD...VH1K style: first four and last four.
+export function maskWallet(address: string | null | undefined): string | null {
+  if (!address || address.length <= 10) return address ?? null;
+  return `${address.slice(0, 4)}...${address.slice(-4)}`;
 }
 
 export interface PlayerSummary {
@@ -64,6 +89,9 @@ export interface PlayerSummary {
   impactRating: number | null;
   // fixture_id -> final_points for "you played this" card states.
   played: Record<number, number>;
+  // Present when the claim feature is exercised; the bench reads it to
+  // choose the CLAIM YOUR LEGEND vs LEGEND CLAIMED state.
+  claim?: ClaimState;
 }
 
 export async function fetchPlayerSummary(): Promise<PlayerSummary> {

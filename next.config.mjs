@@ -8,6 +8,18 @@ const nextConfig = {
       "/api/**": ["./data/replay/**"],
     },
   },
+  webpack: (config) => {
+    // Privy's SDK statically references optional integrations (Stripe,
+    // Farcaster mini-app) that this app does not use and does not install.
+    // Alias them to false so webpack resolves them to an empty module
+    // instead of failing; the code paths that would use them never run.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "@stripe/crypto": false,
+      "@farcaster/mini-app-solana": false,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
