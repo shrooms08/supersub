@@ -1,10 +1,11 @@
 // Player identity types and client-side API helpers. Shared by route
 // handlers and components; no server-only imports.
 
-export const POSITIONS = ["ST", "LW", "RW", "AM", "LM", "CM", "RM", "DM", "LB", "CB", "RB"] as const;
+export const POSITIONS = ["GK", "ST", "LW", "RW", "AM", "LM", "CM", "RM", "DM", "LB", "CB", "RB"] as const;
 export type Position = (typeof POSITIONS)[number];
 
 export const POSITION_LABELS: Record<Position, string> = {
+  GK: "Goalkeeper",
   ST: "Striker",
   LW: "Left winger",
   RW: "Right winger",
@@ -18,11 +19,12 @@ export const POSITION_LABELS: Record<Position, string> = {
   RB: "Right back",
 };
 
-// Display grouping per the canonical design (DEF / MID / FWD). The five
-// stored positions are unchanged; GK is not a stored value, and position
-// feeds nothing in scoring (verified: cosmetic only).
-export type PositionGroup = "DEF" | "MID" | "FWD";
+// Display grouping per the canonical design (GK / DEF / MID / FWD). GK
+// is its own group: a keeper shows as GK, never mapped into an outfield
+// line. Position feeds nothing in scoring (verified: cosmetic only).
+export type PositionGroup = "GK" | "DEF" | "MID" | "FWD";
 export const POSITION_GROUPS: Record<Position, PositionGroup> = {
+  GK: "GK",
   ST: "FWD",
   LW: "FWD",
   RW: "FWD",

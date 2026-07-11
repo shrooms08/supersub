@@ -92,3 +92,48 @@ Uncovered states kept per rule 5, restyled with reference tokens: feed
 error and empty-slate cards, the market-suspended notice, the
 "never came off the bench" full-time card, and the ?clean=1 capture
 mode.
+
+## Addendum, 2026-07-11: data hygiene purge and the GK position
+
+### The purge (operator-confirmed)
+
+`scripts/purge-test-players.mjs` (dry-run by default, FK-safe order,
+exact rows printed) executed against production after the dry-run kill
+list was confirmed: **29 players, 31 entries, 18 badges deleted** (the
+24 pattern-matched harness identities plus, by id and on instruction,
+MINOS #7, both Jules Baptiste #21 rows since one was empty, JUJU #5,
+and OG #10). `minos` #9 untouched. First execution surfaced a real gap:
+`entries` had no RLS delete policy (Phase 1 predates any deletion
+path), so the anon-key delete silently removed nothing and the player
+delete tripped the FK; migration `0005_entries_delete_policy.sql`
+added the missing permissive policy (policy change only) and the rerun
+completed.
+
+Post-purge production state, recomputed live from `/api/matchday`: The
+Table holds exactly `minos` (#9, rank 1, 3 apps, rating 1463.5);
+Legendary Entries holds his two real winning entries (9.13x Argentina
+v Egypt, 3103.9 pts; 2.95x France v Morocco, 1002.5 pts). With fewer
+than three players the design's empty-state treatments cover the gaps.
+
+Demo-flow proof with the SMOKE- convention: `smoke:career` created
+SMOKE-BHCEI, played both fixtures end to end (ALL PHASE 2 SMOKE CHECKS
+PASSED), and one line removed the family afterward:
+`node scripts/purge-test-players.mjs --pattern "SMOKE-%" --pattern "Smoke %" --execute`
+leaving the table at exactly [minos]. Every player-creating script now
+uses the prefix (smoke-career, smoke-signing incl. its "Smoke Legacy"
+old-rule rows, smoke-prod as SMOKE-P...).
+
+### GK, the twelfth position
+
+GK stores as GK and displays as its own group (never mapped to an
+outfield line): `POSITIONS` is twelve with GK first, `POSITION_GROUPS`
+gains the GK group, and the signing pills render it from the same list
+(docs/smoke7/gk-pill-signing.png shows it selected on the ceremony).
+Migration `0004_gk_position.sql` widens `players_position_check` only,
+same shape as 0003; applied and verified. `test:signing` now covers
+"GK maps GK (its own group)", "stored vocabulary is twelve, GK
+included", and "GK is the only position in the GK group" (39 checks
+total). End-to-end over HTTP: POST with position GK answered 201 and
+stored GK; read-back with the cookie returned GK on `/api/player` and
+`/api/career`; the test player was purged with the one-liner. Fold
+16/16 and badges 30/30 unchanged.

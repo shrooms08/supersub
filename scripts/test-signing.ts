@@ -31,8 +31,10 @@ check("diacritics rejected", validateSurname("MÜLLER") === null);
 check("empty rejected", validateSurname("") === null);
 check("non-string rejected", validateSurname(42 as unknown) === null);
 
-// Position display mapping: eleven stored values, three display groups,
-// GK never stored or produced.
+// Position display mapping: twelve stored values, four display groups.
+// GK is stored deliberately and maps to its OWN group, never an
+// outfield line.
+check("GK maps GK (its own group)", POSITION_GROUPS.GK === "GK");
 check("ST maps FWD", POSITION_GROUPS.ST === "FWD");
 check("LW maps FWD", POSITION_GROUPS.LW === "FWD");
 check("RW maps FWD", POSITION_GROUPS.RW === "FWD");
@@ -45,8 +47,8 @@ check("LB maps DEF", POSITION_GROUPS.LB === "DEF");
 check("CB maps DEF", POSITION_GROUPS.CB === "DEF");
 check("RB maps DEF", POSITION_GROUPS.RB === "DEF");
 check(
-  "stored vocabulary is eleven, no GK",
-  POSITIONS.length === 11 && !POSITIONS.includes("GK" as never),
+  "stored vocabulary is twelve, GK included",
+  POSITIONS.length === 12 && POSITIONS.includes("GK"),
   POSITIONS.join(",")
 );
 check(
@@ -54,8 +56,9 @@ check(
   POSITIONS.every((p) => Boolean(POSITION_GROUPS[p])),
 );
 check(
-  "no group is GK",
-  Object.values(POSITION_GROUPS).every((g) => g !== ("GK" as never))
+  "GK is the only position in the GK group",
+  Object.entries(POSITION_GROUPS).filter(([, g]) => g === "GK").length === 1 &&
+    POSITION_GROUPS.GK === "GK"
 );
 
 // PixelCrest determinism: same seed identical, different seeds diverge.
