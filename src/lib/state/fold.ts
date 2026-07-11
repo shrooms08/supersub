@@ -67,6 +67,10 @@ export interface CountableItem {
   clockSeconds: number;
   confirmed: boolean;
   discarded: boolean;
+  // Seq of the action_discarded event, when discarded. The totals
+  // reconciliation needs it: a baseline refreshed at or after this seq
+  // has already had the action removed by the feed.
+  discardedAtSeq?: number;
 }
 
 export interface TickerItem {
@@ -216,7 +220,10 @@ export function foldMatch(
         // after this event must look as if the discarded action never
         // happened, even if no fresh Score map has arrived yet.
         const target = countablesById.get(e.id);
-        if (target) target.discarded = true;
+        if (target) {
+          target.discarded = true;
+          target.discardedAtSeq = e.seq;
+        }
         const tick = tickerById.get(e.id);
         if (tick) tick.discarded = true;
         break;
@@ -284,9 +291,15 @@ export function foldMatch(
     const baselineSeq = baselines[side].seq;
     const key = COUNTER_KEY[item.kind];
     if (item.discarded) {
-      if (item.seq <= baselineSeq) {
-        // Counted inside the baseline, later erased with no fresh totals
-        // yet: subtract so the fold is correct immediately.
+      const discardSeq = item.discardedAtSeq ?? Number.POSITIVE_INFINITY;
+      if (item.seq <= baselineSeq && baselineSeq < discardSeq) {
+        // Counted inside the baseline, and the baseline predates the
+        // erasure: subtract so the fold is correct immediately. If the
+        // baseline arrived at or after the discard (the discard event
+        // itself often carries a fresh Score map), the feed's totals
+        // already exclude this action; subtracting again would erase a
+        // different goal (fixture 18202701: Egypt's pre-coverage
+        // first-half goal, turning a real 3-2 into 3-1).
         counters[side][key] = Math.max(0, counters[side][key] - 1);
       }
       continue;

@@ -71,26 +71,29 @@ Alternative Wounded beat, if wanted: enter as EGYPT at 46' in fixture
 URL: `/match/18202701?mode=replay&speed=30&clean=1` (new tab, after reset)
 
 Fixture 18202701, real match of 2026-07-07: Argentina 0-2 down (one
-Egypt goal later VAR-erased), win 3-1. TxLINE coverage for this fixture
-begins at the second half, so the replay starts at 45' with the full
-first-half market story already painted on the curve. Best miracle in
-the two-week history window; nothing else scanned came close
-(`scripts/scan-comebacks.ts` output is in SMOKE3.md).
+Egypt goal later VAR-erased), win 3-2. Egypt scored once in the first
+half, before TxLINE coverage opens; that goal lives only in the feed's
+cumulative totals, so it is on the scoreboard from the first frame.
+Coverage begins at the second half, so the replay starts at 45' with
+the full first-half market story already painted on the curve. Best
+miracle in the two-week history window; nothing else scanned came
+close (`scripts/scan-comebacks.ts` output is in SMOKE3.md).
 
-- 0:00 connect at 45', scoreboard 0-0, and the whole first-half market
-  story is already painted on the curve. Pick ARGENTINA, hold
-- ~0:26 Egypt score (58'). 0-1
-- ~0:30 VAR erases it (~60'). The scoreboard rolls back to 0-0 on
+- 0:00 connect at 45', scoreboard already 0-1 (the pre-coverage
+  first-half Egypt goal), and the whole first-half market story is
+  painted on the curve. Pick ARGENTINA, hold
+- ~0:26 Egypt score again (58'). 0-2
+- ~0:30 VAR erases it (~60'). The scoreboard rolls back to 0-1 on
   camera
-- ~0:44 Egypt score for real (67'). 0-1, and the curve dives to the
+- ~0:44 Egypt score for real (67'). 0-2, and the curve dives to the
   floor
 - ~1:00 to 1:05 ENTER when the hero number reads under 6% (the market
   bottoms at 4.0% around the 75th minute). Multiplier locks 10.0x,
   tier Miracle Territory
-- ~1:09 Argentina equalise (79'): +100. Level at 1-1
-- ~1:19 Argentina ahead (84'): +100
-- ~1:39 Argentina seal it (92'): +100. The comeback is complete
-- ~2:12 full time 3-1. Resolution: window 440 (three goals, nothing
+- ~1:09 Argentina pull one back (79'): +100. 1-2
+- ~1:19 Argentina equalise (84'): +100. 2-2
+- ~1:39 Argentina complete it (92'): +100. 3-2, the comeback is done
+- ~2:12 full time 3-2. Resolution: window 440 (three goals, nothing
   conceded on your watch, win at the whistle), x10.0 = 4400 points
 - Expected career effects: Miracle Worker AND Comeback King into the
   cabinet, Impact Rating detonates, form W, legendary entry count +1

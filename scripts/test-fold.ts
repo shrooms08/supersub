@@ -150,5 +150,41 @@ check(
   `${multiplierForProb(0.4)}`
 );
 
+// 6. Regression, fixture 18202701 (Argentina v Egypt): coverage starts at
+// the second half, Egypt's first-half goal exists ONLY in cumulative
+// totals, and the VAR discard event itself carries a fresh Score map.
+// The old reconciliation subtracted the discarded goal from baselines
+// that already excluded it, erasing the pre-coverage goal and folding a
+// real 3-2 into 3-1 (audited against the raw log and TxLINE's canonical
+// snapshot; see SMOKE9.md).
+const argRaw = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), "data", "replay", "18202701", "scores.json"), "utf8")
+) as unknown[];
+const argEvents = argRaw
+  .map(normalizeMatchEvent)
+  .filter((e): e is MatchEvent => e !== null);
+const argFinal = foldMatch(argEvents);
+check(
+  "18202701 final folds 3-2 (pre-coverage H1 goal survives the later VAR discard)",
+  argFinal.score.p1 === 3 && argFinal.score.p2 === 2,
+  `folded ${argFinal.score.p1}-${argFinal.score.p2}`
+);
+const argAfterDiscard = foldMatch(argEvents.filter((e) => e.seq <= 647));
+check(
+  "18202701 is 0-1 right after the discard at Seq 647 (discard event refreshes the baseline)",
+  argAfterDiscard.score.p1 === 0 && argAfterDiscard.score.p2 === 1,
+  `folded ${argAfterDiscard.score.p1}-${argAfterDiscard.score.p2}`
+);
+const argAfterSecond = foldMatch(argEvents.filter((e) => e.seq <= 730));
+check(
+  "18202701 is 0-2 after the standing 67' goal (Seq 730)",
+  argAfterSecond.score.p1 === 0 && argAfterSecond.score.p2 === 2,
+  `folded ${argAfterSecond.score.p1}-${argAfterSecond.score.p2}`
+);
+check(
+  "18202701 keeps the overturned 58' goal visible as discarded",
+  argFinal.countables.some((c) => c.id === 570 && c.kind === "goal" && c.discarded)
+);
+
 console.log(failures === 0 ? "\nAll fold checks passed." : `\n${failures} CHECKS FAILED`);
 process.exit(failures === 0 ? 0 : 1);

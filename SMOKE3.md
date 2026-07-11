@@ -77,6 +77,11 @@ fixtures' histories (`scripts/scan-comebacks.ts`):
 18176123  Australia v Egypt: final 1-1  COMEBACK: Australia trailed 0-1 and finished 1-1
 ```
 
+Correction (2026-07-11): the 18202701 line above was produced by a fold
+bug that erased Egypt's pre-coverage first-half goal. The real final is
+3-2 and Argentina trailed 0-2; the fold was fixed and the audit is in
+SMOKE9.md. The comeback is stronger than the scan reported.
+
 ```
 France v Morocco: France 62' -> P 86.9%, 1.00x Safe Hands, window 240, final 240      (Scenario A)
 France v Morocco: Morocco 44' -> P 11.5%, 9.16x Miracle Territory, window -100, final 0  (Scenario B, VAR at 49' in window)
