@@ -12,7 +12,8 @@
 // 409 with the existing entry.
 
 import { NextRequest, NextResponse } from "next/server";
-import { getSource } from "@/lib/sources";
+import { getSource, resolveMode } from "@/lib/sources";
+import { isBundledReplay, IN_THE_BOOKS, NO_REPLAY, timePhase } from "@/lib/playability";
 import { foldMatch, stateMinute } from "@/lib/state/fold";
 import { foldProbSeries, probAt, teamProb } from "@/lib/state/winprob";
 import { multiplierForProb } from "@/lib/state/scoring";
@@ -56,6 +57,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "team must be 1 or 2" }, { status: 400 });
   }
 
+  // Playability rule: replay mode is the demo path and is valid only for
+  // the three bundled fixtures. Any other id in replay mode is rejected
+  // before we touch the source.
+  const mode = resolveMode(body.mode ?? null);
+  if (mode === "replay" && !isBundledReplay(fixtureId!)) {
+    return NextResponse.json({ error: NO_REPLAY }, { status: 409 });
+  }
+
   const source = getSource({
     mode: body.mode ?? null,
     speed: body.speed !== undefined ? String(body.speed) : null,
@@ -63,6 +72,24 @@ export async function POST(req: NextRequest) {
   });
 
   try {
+    // Cheap time-based gate for live mode: a finished or not-yet-started
+    // real fixture is rejected here, before folding its (potentially
+    // days-long) live log. The bundled replays skip this: in replay mode
+    // their virtual clock sits mid-match, and the fold below is the gate.
+    if (mode === "live") {
+      const fixture = await source.getFixture(fixtureId!);
+      if (!fixture) {
+        return NextResponse.json({ error: "No such fixture." }, { status: 404 });
+      }
+      const phase = timePhase(fixture.startTime, Date.now());
+      if (phase !== "live") {
+        return NextResponse.json(
+          { error: phase === "upcoming" ? "The whistle has not gone yet." : IN_THE_BOOKS },
+          { status: 409 }
+        );
+      }
+    }
+
     const sourceNow = await source.feedNow(fixtureId!);
     const entryFeedTs =
       typeof body.feedTs === "number" && body.feedTs > 0
@@ -77,7 +104,7 @@ export async function POST(req: NextRequest) {
     // and an entry made during them could never earn a point.
     if (state.phase !== "live" || state.regulationEndTs !== null) {
       return NextResponse.json(
-        { error: state.phase === "upcoming" ? "The whistle has not gone yet." : "Full time. The bench is closed." },
+        { error: state.phase === "upcoming" ? "The whistle has not gone yet." : IN_THE_BOOKS },
         { status: 409 }
       );
     }

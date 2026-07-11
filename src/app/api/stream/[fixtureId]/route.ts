@@ -14,6 +14,7 @@
 
 import { NextRequest } from "next/server";
 import { getSource, resetReplaySession, resolveMode } from "@/lib/sources";
+import { isBundledReplay } from "@/lib/playability";
 import type { SourceCallbacks } from "@/lib/sources/types";
 
 export const runtime = "nodejs";
@@ -34,6 +35,11 @@ export async function GET(
 
   const search = req.nextUrl.searchParams;
   const mode = resolveMode(search.get("mode"));
+  // Replay is the bundled demo path only; any other id in replay mode has
+  // no data on file. Live-mode watching of any real fixture stays open.
+  if (mode === "replay" && !isBundledReplay(fixtureId)) {
+    return new Response("No replay on file for that one.", { status: 404 });
+  }
   if (mode === "replay" && search.get("restart") === "1") {
     resetReplaySession(fixtureId);
   }
