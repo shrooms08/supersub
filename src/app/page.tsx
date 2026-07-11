@@ -40,24 +40,90 @@ function finalFor(fixture: Fixture, r: ResultFixture): FixtureFinal {
   return { score: r.score, note: pensNote(fixture, r.pens) };
 }
 
-function SectionHead({ title, count }: { title: string; count: string }) {
-  return (
-    <div className="flex items-baseline justify-between px-1">
-      <h2 className="font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-chalk-500">
-        {title}
-      </h2>
-      <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-600">
-        {count}
-      </p>
-    </div>
-  );
-}
-
 const asListing = (fixture: Fixture, phase: Phase): FixtureListing => ({
   fixture,
   phase,
   mode: "live",
 });
+
+type Tab = "today" | "results" | "upcoming";
+const TABS: { key: Tab; label: string }[] = [
+  { key: "today", label: "Today" },
+  { key: "results", label: "Results" },
+  { key: "upcoming", label: "Upcoming" },
+];
+
+// LiveScore-style day header, e.g. "SAT 11 JUL".
+function dayHeader(ts: number): string {
+  return new Date(ts)
+    .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
+    .toUpperCase();
+}
+
+function groupByDay<T extends { fixture: Fixture }>(
+  items: T[],
+  newestFirst: boolean
+): { key: number; header: string; items: T[] }[] {
+  const map = new Map<number, T[]>();
+  for (const it of items) {
+    const k = Math.floor(it.fixture.startTime / 86_400_000);
+    const list = map.get(k) ?? [];
+    list.push(it);
+    map.set(k, list);
+  }
+  return [...map.entries()]
+    .map(([key, list]) => ({ key, header: dayHeader(list[0].fixture.startTime), items: list }))
+    .sort((a, b) => (newestFirst ? b.key - a.key : a.key - b.key));
+}
+
+function DayHead({ label }: { label: string }) {
+  return (
+    <p className="mt-1 px-1 font-label text-[10px] font-bold uppercase tracking-[0.18em] text-chalk-500">
+      {label}
+    </p>
+  );
+}
+
+function TabBar({
+  tab,
+  onSelect,
+  counts,
+  live,
+}: {
+  tab: Tab;
+  onSelect: (t: Tab) => void;
+  counts: Record<Tab, number>;
+  live: boolean;
+}) {
+  return (
+    <div role="tablist" aria-label="Fixtures" className="flex items-stretch gap-1 border-b border-white/[0.08]">
+      {TABS.map(({ key, label }) => {
+        const active = tab === key;
+        return (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={active}
+            type="button"
+            onClick={() => onSelect(key)}
+            className={`relative flex-1 px-2 pb-2.5 pt-1 text-center font-label text-[11px] font-bold uppercase tracking-[0.14em] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50 ${
+              active ? "text-volt" : "text-chalk-500"
+            }`}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              {key === "today" && live && (
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-volt animate-live-pulse" />
+              )}
+              {label}
+              <span className="text-chalk-600">{counts[key]}</span>
+            </span>
+            {active && <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-volt" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function BenchInner() {
   const searchParams = useSearchParams();
@@ -143,6 +209,23 @@ function BenchInner() {
     return () => clearInterval(t);
   }, [needsClock]);
 
+  // Tab state, mirrored to ?tab= so a link lands on a specific tab.
+  const tabParam = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(
+    tabParam === "results" || tabParam === "upcoming" ? tabParam : "today"
+  );
+  const selectTab = (t: Tab) => {
+    setTab(t);
+    const p = new URLSearchParams(window.location.search);
+    p.set("tab", t);
+    window.history.replaceState(null, "", `${window.location.pathname}?${p.toString()}`);
+  };
+  // Today with any live match pinned to the top under the volt pulse.
+  const todaySorted = [...today].sort(
+    (a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || a.fixture.startTime - b.fixture.startTime
+  );
+  const resultDays = groupByDay(results, true);
+
   // First run (or any playerless visit) lands on Signing Day.
   if (summary && !player) {
     return (
@@ -189,21 +272,19 @@ function BenchInner() {
           />
 
           <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1.55fr_1fr] lg:items-start">
-            <div className="flex min-w-0 flex-col gap-6">
-              {/* TODAY */}
-              <section aria-label="Today's fixtures" className="flex flex-col gap-2.5">
-                <SectionHead
-                  title="Today"
-                  count={sched ? `${today.length} listed` : "Checking the board"}
+            <div className="flex min-w-0 flex-col gap-5">
+              <section aria-label="Fixtures" className="flex flex-col gap-2.5">
+                <TabBar
+                  tab={tab}
+                  onSelect={selectTab}
+                  counts={{ today: today.length, results: results.length, upcoming: upcomingCount }}
+                  live={liveCount > 0}
                 />
 
-                {!sched && !error && (
-                  <>
-                    {[0, 1].map((i) => (
-                      <div key={i} className="panel-quiet h-28 animate-pulse !rounded-[14px]" />
-                    ))}
-                  </>
-                )}
+                {!sched && !error &&
+                  [0, 1].map((i) => (
+                    <div key={i} className="panel-quiet h-28 animate-pulse !rounded-[14px]" />
+                  ))}
 
                 {error && (
                   <div className="panel !rounded-[14px] p-4">
@@ -221,7 +302,7 @@ function BenchInner() {
                   </div>
                 )}
 
-                {sched && sched.error && today.length === 0 && (
+                {sched && sched.error && (
                   <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
                     <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
                       Schedule feed unavailable
@@ -232,68 +313,80 @@ function BenchInner() {
                   </div>
                 )}
 
-                {sched && !sched.error && today.length === 0 && (
-                  <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
-                    <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
-                      No matches today
-                    </p>
-                    <p className="mt-1.5 font-label text-xs text-chalk-500">
-                      See what is coming up below.
-                    </p>
-                  </div>
+                {/* TODAY */}
+                {sched && tab === "today" && (
+                  todaySorted.length === 0 ? (
+                    <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
+                      <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
+                        No matches today
+                      </p>
+                      <p className="mt-1.5 font-label text-xs text-chalk-500">
+                        Check Upcoming for what is next.
+                      </p>
+                    </div>
+                  ) : (
+                    todaySorted.map((f) => (
+                      <FixtureCard
+                        key={f.fixture.fixtureId}
+                        listing={asListing(f.fixture, f.phase)}
+                        result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
+                        href={matchHref(f.fixture.fixtureId, "live")}
+                        now={now}
+                        final={f.phase === "finished" && "score" in f ? finalFor(f.fixture, f) : undefined}
+                      />
+                    ))
+                  )
                 )}
 
-                {today.map((f) => (
-                  <FixtureCard
-                    key={f.fixture.fixtureId}
-                    listing={asListing(f.fixture, f.phase)}
-                    result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
-                    href={matchHref(f.fixture.fixtureId, "live")}
-                    now={now}
-                    final={f.phase === "finished" && "score" in f ? finalFor(f.fixture, f) : undefined}
-                  />
-                ))}
-              </section>
-
-              {/* COMING UP */}
-              {comingUp.length > 0 && (
-                <section aria-label="Coming up" className="flex flex-col gap-2.5">
-                  <SectionHead title="Coming up" count={`${upcomingCount} scheduled`} />
-                  {comingUp.map((group) => (
-                    <div key={group.date} className="flex flex-col gap-2.5">
-                      <p className="px-1 font-label text-[9px] font-bold uppercase tracking-[0.16em] text-chalk-600">
-                        {group.label}
-                      </p>
-                      {group.fixtures.map((f) => (
-                        <FixtureCard
-                          key={f.fixture.fixtureId}
-                          listing={asListing(f.fixture, f.phase)}
-                          result={null}
-                          href={matchHref(f.fixture.fixtureId, "live")}
-                          now={now}
-                        />
-                      ))}
+                {/* RESULTS, grouped by day, newest day first */}
+                {sched && tab === "results" && (
+                  results.length === 0 ? (
+                    <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
+                      <p className="font-label text-sm text-chalk-400">No results yet.</p>
                     </div>
-                  ))}
-                </section>
-              )}
+                  ) : (
+                    resultDays.map((group) => (
+                      <div key={group.key} className="flex flex-col gap-2.5">
+                        <DayHead label={group.header} />
+                        {group.items.map((f) => (
+                          <FixtureCard
+                            key={f.fixture.fixtureId}
+                            listing={asListing(f.fixture, "finished")}
+                            result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
+                            href={matchHref(f.fixture.fixtureId, "live")}
+                            now={now}
+                            final={finalFor(f.fixture, f)}
+                          />
+                        ))}
+                      </div>
+                    ))
+                  )
+                )}
 
-              {/* RESULTS */}
-              {results.length > 0 && (
-                <section aria-label="Results" className="flex flex-col gap-2.5">
-                  <SectionHead title="Results" count={`${results.length} played`} />
-                  {results.map((f) => (
-                    <FixtureCard
-                      key={f.fixture.fixtureId}
-                      listing={asListing(f.fixture, "finished")}
-                      result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
-                      href={matchHref(f.fixture.fixtureId, "live")}
-                      now={now}
-                      final={finalFor(f.fixture, f)}
-                    />
-                  ))}
-                </section>
-              )}
+                {/* UPCOMING, grouped by day */}
+                {sched && tab === "upcoming" && (
+                  comingUp.length === 0 ? (
+                    <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
+                      <p className="font-label text-sm text-chalk-400">Nothing scheduled yet.</p>
+                    </div>
+                  ) : (
+                    comingUp.map((group) => (
+                      <div key={group.date} className="flex flex-col gap-2.5">
+                        <DayHead label={dayHeader(group.fixtures[0].fixture.startTime)} />
+                        {group.fixtures.map((f) => (
+                          <FixtureCard
+                            key={f.fixture.fixtureId}
+                            listing={asListing(f.fixture, f.phase)}
+                            result={null}
+                            href={matchHref(f.fixture.fixtureId, "live")}
+                            now={now}
+                          />
+                        ))}
+                      </div>
+                    ))
+                  )
+                )}
+              </section>
 
               <LegendaryEntries rows={matchday?.legendary ?? []} />
             </div>

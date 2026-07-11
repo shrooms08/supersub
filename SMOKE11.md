@@ -161,3 +161,85 @@ Deployed loop unaffected:
 Production assertions (Norway v England in TODAY, Argentina 3-2 Egypt
 and Switzerland pens 4-3 in RESULTS, three replays) all pass against
 the live canonical URL.
+
+## 5. Playability rules + tabs pass (2026-07-11, later)
+
+Two-part read-only-plus-one-guard pass on the bench. No scoring or
+schema change. Deployed to production (deployment supersub-fis1hpqxj,
+canonical alias re-pointed).
+
+### Part 1: server-enforced playability
+
+`src/lib/playability.ts` holds the three bundled replay ids
+(18202701, 18202783, 18209181), a live-window helper, and the
+broadcast-voice copy. Enforced in the entry and stream endpoints, not
+just the UI:
+
+- Enter, replay mode, non-bundled id -> 409 before touching the source.
+- Enter, live mode -> a cheap time-based gate (kickoff to ~FT+30)
+  rejects upcoming and finished fixtures before folding a potentially
+  days-long live log (folding one to reject it was hanging the request;
+  the time gate fixed it).
+- Stream, replay mode, non-bundled id -> 404. Live-mode watching of any
+  real fixture stays open (watch-or-read only, as specified).
+
+Proven over HTTP on the local production build (player SMOKE-GUARD,
+removed after):
+
+```
+A) POST /api/enter {18218149 (Spain v Belgium, finished), mode:live}
+   -> 409 {"error":"That one is in the books."}
+B) POST /api/enter {18218149, mode:replay}
+   -> 409 {"error":"No replay on file for that one."}
+C) GET  /api/stream/18218149?mode=replay   -> 404
+   GET  /api/stream/18209181?mode=replay   -> 200 (bundled, still works)
+```
+
+Re-checked on production (supersub-tau):
+
+```
+GET /api/stream/18218149?mode=replay  -> 404
+GET /api/stream/18209181?mode=replay  -> 200
+```
+
+Finished real fixtures keep showing their final score with no enter
+path; upcoming keep the disabled LINEUPS state; the three bundled
+replays remain fully playable.
+
+### Part 2: LiveScore-style tabs
+
+The single scrolling band stack is now three tabs, default TODAY, with
+the tab in `?tab=` so a link can deep-land:
+
+- TODAY: today's fixtures, a live match pinned to the top under the
+  volt pulse with ENTER wired to live mode; countdown / LIVE / FT as the
+  day turns. (Norway v England shows here with its countdown.)
+- RESULTS: finished fixtures grouped by day, newest day first, with
+  LiveScore day headers (FRI 10 JUL, THU 9 JUL, ...), score on the
+  right, the pens convention where it applies (SWI advanced on penalties
+  4-3).
+- UPCOMING: future fixtures grouped by day with day headers and
+  countdowns on the near ones.
+
+The REPLAYS rail stays outside the tabs, labeled DEMO / JUDGES. The
+10-minute schedule cache is untouched; switching tabs is pure client
+render, no extra feed calls.
+
+Screenshots (in `scratchpad/tab-shots/`), all three tabs at 390px and
+1280px: `tab-today-mobile.png`, `tab-results-mobile.png`,
+`tab-upcoming-mobile.png` and the `-desktop` set. Body assertions at
+both widths: TODAY, RESULTS, UPCOMING, REPLAYS all present, day-header
+pattern (`SAT 11 JUL`) matches. Desktop keeps the two-column layout
+(tabs left, replays rail plus table right); mobile stacks and the tab
+bar stays usable at 390px.
+
+### Verification
+
+```
+fold 30/30, badges 30/30, signing 35/35   (untouched)
+tsc + npm run build                        clean
+Deployed URL checked:
+  GET https://supersub-tau.vercel.app/?tab=results  -> 200
+  GET https://supersub-tau.vercel.app/api/schedule  -> 200
+  stream guard live (404 / 200 above)
+```
