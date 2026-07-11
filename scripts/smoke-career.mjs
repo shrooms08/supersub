@@ -126,7 +126,9 @@ async function playMatch(fixtureId, team, label) {
 
 async function main() {
   // 1. First-run flow
-  const name = `Smoke ${String(Date.now()).slice(-6)}`;
+  // Surname rule (design phase 2): 2-12 chars, A-Z plus hyphen. Encode the
+  // timestamp as letters so each run stays unique and rule-conforming.
+  const name = `SMOKE-${String(Date.now()).slice(-5).replace(/\d/g, (d) => "ABCDEFGHIJ"[Number(d)])}`;
   const created = await api("/api/player", {
     method: "POST",
     body: JSON.stringify({ name, position: "ST", shirtNumber: 14 }),
@@ -137,7 +139,7 @@ async function main() {
 
   const dup = await api("/api/player", {
     method: "POST",
-    body: JSON.stringify({ name: "Someone Else", position: "CB", shirtNumber: 5 }),
+    body: JSON.stringify({ name: "SOMEONE", position: "CB", shirtNumber: 5 }),
   });
   log(`second create attempt -> HTTP ${dup.status} (expected 409)`);
   if (dup.status !== 409) throw new Error("duplicate player was not rejected");

@@ -102,6 +102,21 @@ function BenchInner() {
     return () => clearInterval(t);
   }, [needsClock]);
 
+  // First run (or any playerless visit) lands on Signing Day, not the
+  // hub: the ceremony takes the whole screen, tunnel-quiet, no slate.
+  if (summary && !player) {
+    return (
+      <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-4 py-10">
+        <SigningForm
+          onSigned={(p) => {
+            setSummary({ player: p, appearances: 0, impactRating: null, played: {} });
+            void loadIdentity();
+          }}
+        />
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-5 px-4 py-6 lg:max-w-5xl">
       <Masthead liveNow={liveNow} dateMs={Date.now()} />
@@ -114,17 +129,6 @@ function BenchInner() {
             <div className="panel-quiet h-28 animate-pulse" />
             <div className="panel-quiet h-28 animate-pulse" />
           </div>
-        </div>
-      )}
-
-      {summary && !player && (
-        <div className="mx-auto w-full max-w-2xl">
-          <SigningForm
-            onSigned={(p) => {
-              setSummary({ player: p, appearances: 0, impactRating: null, played: {} });
-              void loadIdentity();
-            }}
-          />
         </div>
       )}
 

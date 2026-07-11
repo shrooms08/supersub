@@ -1,11 +1,23 @@
 "use client";
 
-// First-run flow: create your player once. Signing day at the club.
+// Signing Day: the contract ceremony, per the canonical reference.
+// SIGNING DAY · FIRST RUN eyebrow, the live generated crest that
+// redraws on every keystroke, CLAUSE I identity (surname, shirt number,
+// position pills), CLAUSE II terms, the Gaffer's word, and SIGN
+// CONTRACT. Identity is written once and is permanent; the copy says so
+// and the API enforces it.
 
 import { useMemo, useState } from "react";
-import { createPlayer, POSITIONS, POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
+import {
+  createPlayer,
+  POSITIONS,
+  POSITION_GROUPS,
+  POSITION_LABELS,
+  validateSurname,
+  type PlayerRow,
+  type Position,
+} from "@/lib/player";
 import { PixelCrest } from "./PixelCrest";
-import { KitShirt } from "./KitShirt";
 
 export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => void }) {
   const [name, setName] = useState("");
@@ -14,111 +26,183 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const previewName = useMemo(() => name.trim() || "Unnamed", [name]);
+  const surname = validateSurname(name);
+  const previewName = surname ?? (name.trim().toUpperCase() || "SURNAME");
+  const crestSeed = useMemo(
+    () => `${previewName}-${shirtNumber || 0}`,
+    [previewName, shirtNumber]
+  );
+  const numberOk = Number.isInteger(shirtNumber) && shirtNumber >= 1 && shirtNumber <= 99;
+  const ready = surname !== null && numberOk;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (busy) return;
+    if (busy || !ready || !surname) return;
     setBusy(true);
     setError(null);
-    const res = await createPlayer({ name: name.trim(), position, shirtNumber });
+    const res = await createPlayer({ name: surname, position, shirtNumber });
     setBusy(false);
     if (res.player) onSigned(res.player);
     else setError(res.error ?? "The fax machine jammed. Try again.");
   };
 
   return (
-    <section aria-label="Create your player" className="panel overflow-hidden">
-      <div className="border-b border-pitch-700 px-5 py-4">
-        <p className="label">Contract on the table</p>
-        <h2 className="mt-1 font-display text-2xl font-black uppercase tracking-tight text-chalk-50">
-          Signing day
-        </h2>
-        <p className="mt-1 text-sm text-chalk-400">
-          One player, one career. Pick a name, a shirt, a position. The gaffer
-          only asks once.
+    <section aria-label="Sign your contract" className="mx-auto w-full max-w-md">
+      <header className="text-center">
+        <p className="font-label text-[9px] font-bold uppercase tracking-[0.22em] text-volt">
+          Signing day · First run
+        </p>
+        <h1 className="hero-number mt-1.5 text-[34px] uppercase leading-[0.9] text-chalk-50 lg:text-[40px]">
+          Sign your contract
+        </h1>
+        <p className="mt-2 font-label text-[11px] leading-relaxed text-chalk-400">
+          One career. One identity. For the whole tournament.
+        </p>
+      </header>
+
+      {/* The crest, live */}
+      <div className="panel mt-4 bg-gradient-to-b from-pitch-800 to-pitch-900 p-4 text-center">
+        <p className="font-label text-[8px] font-bold uppercase tracking-[0.2em] text-chalk-500">
+          Generated crest · Live
+        </p>
+        <div className="mt-3 flex justify-center">
+          <PixelCrest seed={crestSeed} number={shirtNumber || 0} size={118} />
+        </div>
+        <div className="mt-3 flex items-baseline justify-center gap-2">
+          <span className="hero-number text-[28px] uppercase leading-none text-chalk-50">
+            {previewName}
+          </span>
+          <span className="hero-number text-lg font-semibold leading-none text-chalk-500">
+            #{numberOk ? shirtNumber : "--"}
+          </span>
+        </div>
+        <p className="mt-1.5 font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-400">
+          Super Sub · {POSITION_GROUPS[position]}
         </p>
       </div>
 
-      <form onSubmit={submit} className="flex flex-col gap-4 px-5 py-4">
-        <div className="flex items-center gap-4">
-          <KitShirt name={previewName} shirtNumber={shirtNumber} size={88} className="shrink-0" />
-          <div className="flex min-w-0 flex-col gap-1.5">
-            <PixelCrest seed={`${previewName}-${shirtNumber}`} number={shirtNumber} size={28} />
-            <p className="whisper">
-              Your kit and crest. Both follow from your name and number; there
-              is no changing room mirror.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="player-name" className="whisper">
-            Name on the shirt
+      <form onSubmit={submit}>
+        {/* Clause I */}
+        <div className="panel mt-3 p-4">
+          <p className="font-label text-[8px] font-bold uppercase tracking-[0.2em] text-volt">
+            Clause I · Identity
+          </p>
+          <label
+            htmlFor="player-name"
+            className="mt-3 block font-label text-[8px] font-semibold uppercase tracking-[0.16em] text-chalk-500"
+          >
+            Surname on shirt
           </label>
           <input
             id="player-name"
             type="text"
             required
-            maxLength={20}
-            autoComplete="nickname"
+            maxLength={12}
+            autoComplete="off"
+            spellCheck={false}
             value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Twenty characters, tops"
+            onChange={(e) => setName(e.target.value.toUpperCase().replace(/[^A-Z-]/g, ""))}
+            placeholder="SURNAME"
             aria-describedby="player-name-permanent"
-            className="hero-number min-h-[44px] rounded-md border border-pitch-600 bg-pitch-950 px-3 py-2 text-[22px] uppercase tracking-[0.03em] text-chalk-50 placeholder:text-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
+            className="hero-number mt-2 w-full rounded-lg border border-white/15 bg-pitch-950 px-3.5 py-3 text-[22px] uppercase tracking-[0.03em] text-chalk-50 placeholder:text-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
           />
-          <p id="player-name-permanent" className="text-xs text-chalk-400">
-            Choose carefully. This name is permanent.
+          <p id="player-name-permanent" className="mt-2 font-label text-[10px] italic text-chalk-400">
+            Choose carefully. <b className="not-italic text-chalk-50">This name is permanent.</b>
           </p>
+
+          <div className="mt-3.5 flex gap-3">
+            <div className="w-[86px] flex-none">
+              <label
+                htmlFor="player-number"
+                className="font-label text-[8px] font-semibold uppercase tracking-[0.16em] text-chalk-500"
+              >
+                Shirt &#8470;
+              </label>
+              <input
+                id="player-number"
+                type="number"
+                required
+                min={1}
+                max={99}
+                inputMode="numeric"
+                value={shirtNumber}
+                onChange={(e) => setShirtNumber(Number(e.target.value))}
+                className="hero-number mt-2 w-full rounded-lg border border-volt/40 bg-pitch-950 px-3 py-3 text-center text-2xl text-volt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="font-label text-[8px] font-semibold uppercase tracking-[0.16em] text-chalk-500">
+                Position
+              </span>
+              <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Position">
+                {POSITIONS.map((p) => {
+                  const active = position === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      title={`${POSITION_LABELS[p]} (${POSITION_GROUPS[p]})`}
+                      aria-pressed={active}
+                      onClick={() => setPosition(p)}
+                      className={`rounded-lg px-3 py-2.5 font-label text-[9px] font-bold tracking-[0.08em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50 ${
+                        active
+                          ? "border border-chalk-100 bg-chalk-100 text-pitch-900"
+                          : "border border-white/10 bg-transparent text-chalk-400 hover:text-chalk-100"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="player-number" className="whisper">
-              Squad number
-            </label>
-            <input
-              id="player-number"
-              type="number"
-              required
-              min={1}
-              max={99}
-              inputMode="numeric"
-              value={shirtNumber}
-              onChange={(e) => setShirtNumber(Number(e.target.value))}
-              className="hero-number min-h-[44px] rounded-md border border-volt/40 bg-pitch-950 px-3 py-2 text-center text-2xl text-volt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-            />
+        {/* Clause II */}
+        <div className="panel-quiet mt-3 px-4 py-3.5">
+          <p className="mb-1.5 font-label text-[8px] font-bold uppercase tracking-[0.2em] text-chalk-500">
+            Clause II · Terms
+          </p>
+          <div className="flex justify-between border-b border-white/5 py-2">
+            <span className="font-label text-[9px] font-semibold text-chalk-500">CLUB</span>
+            <span className="hero-number text-[13px] leading-none text-chalk-50">SUPER SUB FC</span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="player-position" className="whisper">
-              Position
-            </label>
-            <select
-              id="player-position"
-              value={position}
-              onChange={(e) => setPosition(e.target.value as Position)}
-              className="min-h-[44px] rounded-md border border-pitch-600 bg-pitch-900 px-3 py-2 text-base text-chalk-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
-            >
-              {POSITIONS.map((p) => (
-                <option key={p} value={p}>
-                  {p} · {POSITION_LABELS[p]}
-                </option>
-              ))}
-            </select>
+          <div className="flex justify-between border-b border-white/5 py-2">
+            <span className="font-label text-[9px] font-semibold text-chalk-500">COMPETITION</span>
+            <span className="hero-number text-[13px] leading-none text-chalk-50">WORLD CUP 2026</span>
+          </div>
+          <div className="flex justify-between py-2">
+            <span className="font-label text-[9px] font-semibold text-chalk-500">TERM</span>
+            <span className="hero-number text-[13px] leading-none text-volt">PERMANENT</span>
           </div>
         </div>
+
+        {/* The Gaffer's word */}
+        <blockquote className="mt-3 px-1 font-slab text-xs italic leading-relaxed text-chalk-400">
+          &ldquo;You&apos;ll not start a single match, son. But when it&apos;s slipping away,
+          that&apos;s your moment.&rdquo;
+          <cite className="mt-1.5 block font-label text-[8px] font-semibold not-italic tracking-[0.14em] text-chalk-600">
+            - THE GAFFER
+          </cite>
+        </blockquote>
 
         <button
           type="submit"
-          disabled={busy || name.trim().length === 0}
-          className="min-h-[52px] w-full rounded-lg bg-volt px-6 py-3 font-display text-lg font-black uppercase tracking-wide text-pitch-950 transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50 focus-visible:ring-offset-2 focus-visible:ring-offset-pitch-950 enabled:hover:bg-volt-bright enabled:active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={busy || !ready}
+          className="hero-number mt-3.5 w-full rounded-[13px] px-4 py-4 text-2xl uppercase tracking-[0.05em] text-pitch-900 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt focus-visible:ring-offset-2 focus-visible:ring-offset-pitch-950 disabled:cursor-not-allowed disabled:opacity-40"
+          style={{
+            background: "linear-gradient(90deg, #c8ff00, #e4ff6b, #c8ff00)",
+            backgroundSize: "200% 100%",
+            animation:
+              busy || !ready ? undefined : "glowBreath 2.6s infinite, sheen 3s linear infinite",
+          }}
         >
-          {busy ? "Signing..." : "Sign the forms"}
+          &#9998; {busy ? "Signing..." : "Sign contract"}
         </button>
 
         {error && (
-          <p role="alert" className="text-center text-sm text-chalk-300">
+          <p role="alert" className="mt-3 text-center font-label text-sm text-chalk-300">
             {error}
           </p>
         )}

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/server/supabase";
 import { currentPlayer, setPlayerCookie } from "@/lib/server/playerAuth";
 import { careerRecord } from "@/lib/career/stats";
-import { POSITIONS, type PlayerRow, type Position } from "@/lib/player";
+import { POSITIONS, validateSurname, type PlayerRow, type Position } from "@/lib/player";
 import type { EntryRow } from "@/lib/entry";
 
 export const runtime = "nodejs";
@@ -44,12 +44,9 @@ interface CreateBody {
   shirtNumber?: number;
 }
 
-function validName(name: unknown): string | null {
-  if (typeof name !== "string") return null;
-  const trimmed = name.trim();
-  if (trimmed.length < 1 || trimmed.length > 20) return null;
-  return trimmed;
-}
+// Contract rule for NEW signings (Phase 2): surname 2 to 12 characters,
+// A-Z plus hyphen, normalized to uppercase. Rows signed under the old
+// rule are untouched and keep working; only the write is gated.
 
 export async function POST(req: NextRequest) {
   // The player row is created once; an existing identity keeps it.
@@ -68,9 +65,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
-  const name = validName(body.name);
+  const name = validateSurname(body.name);
   if (!name) {
-    return NextResponse.json({ error: "Name is required, 20 characters or fewer." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Surname on the shirt: 2 to 12 letters, A to Z, hyphens allowed inside." },
+      { status: 400 }
+    );
   }
   if (!POSITIONS.includes(body.position as Position)) {
     return NextResponse.json({ error: "Position must be one of ST, AM, CM, DM, CB." }, { status: 400 });

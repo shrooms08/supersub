@@ -6,7 +6,7 @@
 
 import Link from "next/link";
 import type { PlayerRow } from "@/lib/player";
-import { POSITION_LABELS, type Position } from "@/lib/player";
+import { POSITION_GROUPS, POSITION_LABELS, type Position } from "@/lib/player";
 import type { WindowResult } from "@/lib/career/window";
 import { KitShirt } from "./KitShirt";
 import { PixelCrest } from "./PixelCrest";
@@ -43,7 +43,10 @@ export function PlayerCard({
             {player.name}
           </p>
           <p className="mt-1 font-label text-xs text-chalk-400">
-            No. {player.shirt_number} · {POSITION_LABELS[player.position as Position]}
+            No. {player.shirt_number} ·{" "}
+            <span title={POSITION_LABELS[player.position as Position]}>
+              {POSITION_GROUPS[player.position as Position]}
+            </span>
           </p>
           <p className="mt-0.5 font-label text-xs text-chalk-500">
             {appearances === 0

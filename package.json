@@ -12,7 +12,9 @@
     "test:fold": "tsx scripts/test-fold.ts",
     "smoke": "node scripts/smoke-replay.mjs",
     "test:badges": "tsx scripts/test-badges.ts",
-    "smoke:career": "node scripts/smoke-career.mjs"
+    "smoke:career": "node scripts/smoke-career.mjs",
+    "test:signing": "tsx scripts/test-signing.ts",
+    "smoke:signing": "node scripts/smoke-signing.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

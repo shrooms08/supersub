@@ -9,7 +9,7 @@ import Link from "next/link";
 import { PixelCrest } from "@/components/PixelCrest";
 import { fmtMultiplier, fmtPoints } from "@/lib/format";
 import { tierForMultiplier } from "@/lib/config/scoring";
-import { POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
+import { POSITION_GROUPS, POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
 import { FormChips } from "@/components/FormChips";
 import { KitShirt } from "@/components/KitShirt";
 import type { CareerRecord } from "@/lib/career/stats";
@@ -123,7 +123,10 @@ export default function CareerPage() {
                 {player.name}
               </h1>
               <p className="mt-1 text-sm text-chalk-400">
-                No. {player.shirt_number} · {POSITION_LABELS[player.position as Position]}
+                No. {player.shirt_number} ·{" "}
+                <span title={POSITION_LABELS[player.position as Position]}>
+                  {POSITION_GROUPS[player.position as Position]}
+                </span>
               </p>
               <p className="whisper mt-0.5 hidden sm:block">Contracted for the tournament</p>
             </div>

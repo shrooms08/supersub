@@ -12,6 +12,29 @@ export const POSITION_LABELS: Record<Position, string> = {
   CB: "Centre back",
 };
 
+// Display grouping per the canonical design (DEF / MID / FWD). The five
+// stored positions are unchanged; GK is not a stored value, and position
+// feeds nothing in scoring (verified: cosmetic only).
+export type PositionGroup = "DEF" | "MID" | "FWD";
+export const POSITION_GROUPS: Record<Position, PositionGroup> = {
+  ST: "FWD",
+  AM: "MID",
+  CM: "MID",
+  DM: "MID",
+  CB: "DEF",
+};
+
+// Surname on the shirt: 2 to 12 characters, A-Z plus hyphen, starting and
+// ending with a letter. Returns the normalized (uppercased) surname or
+// null. Enforced on the client and at the write; existing rows signed
+// under the old rule are untouched and keep working.
+export function validateSurname(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const name = raw.trim().toUpperCase();
+  if (!/^[A-Z][A-Z-]{0,10}[A-Z]$/.test(name)) return null;
+  return name;
+}
+
 export interface PlayerRow {
   id: string;
   name: string;
