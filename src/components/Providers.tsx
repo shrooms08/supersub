@@ -15,9 +15,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <PrivyProvider
       appId={PRIVY_APP_ID}
       config={{
-        // Login by email or an external wallet; an embedded Solana wallet
-        // is created for anyone who signs in without one.
-        loginMethods: ["email", "wallet"],
+        // Email only: no external wallet login. Every signed-in user gets
+        // an embedded Solana wallet, which is what populates
+        // wallet_address on claim.
+        loginMethods: ["email"],
         embeddedWallets: {
           solana: { createOnLogin: "users-without-wallets" },
         },
