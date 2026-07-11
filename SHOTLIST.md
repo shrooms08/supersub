@@ -38,9 +38,10 @@ scene are in DEMO.md.
 
 - URL: `<PROD>/match/18202701?mode=replay&speed=30&clean=1` (new tab)
 - Speed: 30
-- On screen at record start: scoreboard 0-0 at 45' with the first-half
-  market story already on the curve. Egypt score twice (one erased by
-  VAR on camera); enter under 6%; ride it to 4400
+- On screen at record start: scoreboard 0-1 at 45' (Egypt's
+  pre-coverage first-half goal) with the first-half market story
+  already on the curve. Egypt score again (erased by VAR on camera)
+  then for real; enter under 6%; ride it to 440
 
 ## Scene 6: The career
 

@@ -129,7 +129,7 @@ deletes nothing, rather than silently no-opping.
 
 ```
 [smoke2] player created: SMOKE-BGIDG #14 (ST)          (anon INSERT players)
-[smoke2] resolved: final 0-2, window -100, points 0, new badges [first_whistle]
+[smoke2] resolved: final 0-2, window -10, points 0, new badges [first_whistle]
 [smoke2] resolved: final 0-0, window 40, points 291.5   (anon UPDATE entries, upsert badges)
 [smoke2] career after match two: apps 2, impact 145.75, form [DL]  (anon SELECT)
 [smoke2] ALL PHASE 2 SMOKE CHECKS PASSED

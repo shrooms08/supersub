@@ -110,7 +110,7 @@ const morocco = scoreWindow(
 );
 check(
   "Morocco entry: two conceded, no bonuses",
-  morocco.windowPoints === -100 && morocco.breakdown.filter((b) => b.type === "goal_conceded").length === 2,
+  morocco.windowPoints === -10 && morocco.breakdown.filter((b) => b.type === "goal_conceded").length === 2,
   `window ${morocco.windowPoints}, items ${morocco.breakdown.map((b) => b.type).join(",")}`
 );
 const moroccoProb = teamProb(probAt(series, entryTs)!, 2);
@@ -131,8 +131,8 @@ const france = scoreWindow(
   final
 );
 check(
-  "France entry: 2 goals + clean sheet + win = 340",
-  france.windowPoints === 340,
+  "France entry: 2 goals + clean sheet + win = 34",
+  france.windowPoints === 34,
   `window ${france.windowPoints}`
 );
 const franceProb = teamProb(probAt(series, entryTs)!, 1);
@@ -262,8 +262,8 @@ const suiWindow = scoreWindow(
   regWithEt
 );
 check(
-  "18202783+ET-goal: window vs regulation fold is clean sheet only (40, no conceded)",
-  suiWindow.windowPoints === 40 &&
+  "18202783+ET-goal: window vs regulation fold is clean sheet only (4, no conceded)",
+  suiWindow.windowPoints === 4 &&
     suiWindow.breakdown.every((b) => b.type !== "goal_conceded") &&
     suiWindow.finalScoreOpp === 0,
   `window ${suiWindow.windowPoints}, final ${suiWindow.finalScoreTeam}-${suiWindow.finalScoreOpp}`

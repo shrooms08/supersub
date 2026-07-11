@@ -22,13 +22,13 @@ const goalFor = (minute: number): BreakdownItem => ({
   type: "goal_for",
   label: `Goal for your side ${minute}'`,
   minute,
-  points: 100,
+  points: 10,
 });
 const goalConceded = (minute: number): BreakdownItem => ({
   type: "goal_conceded",
   label: `Goal conceded ${minute}'`,
   minute,
-  points: -50,
+  points: -5,
 });
 const overturned = (minute: number): BreakdownItem => ({
   type: "goal_overturned",

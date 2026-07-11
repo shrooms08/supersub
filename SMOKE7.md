@@ -112,7 +112,7 @@ completed.
 Post-purge production state, recomputed live from `/api/matchday`: The
 Table holds exactly `minos` (#9, rank 1, 3 apps, rating 1463.5);
 Legendary Entries holds his two real winning entries (9.13x Argentina
-v Egypt, 3103.9 pts; 2.95x France v Morocco, 1002.5 pts). With fewer
+v Egypt, 310.4 pts; 2.95x France v Morocco, 100.3 pts). With fewer
 than three players the design's empty-state treatments cover the gaps.
 
 Demo-flow proof with the SMOKE- convention: `smoke:career` created

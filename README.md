@@ -22,8 +22,8 @@ receipts.
 
 **The loop.** Pick a side, watch the curve, enter once. Window scoring
 (all constants in `src/lib/config/scoring.ts`): goal for your side
-+100, goal conceded -50, nothing conceded in your window +40, win at
-the whistle +100, draw salvaged from behind +60. Final score =
++10, goal conceded -5, nothing conceded in your window +4, win at
+the whistle +10, draw salvaged from behind +6. Final score =
 max(0, window points) x your locked multiplier.
 
 **The multiplier.** Locked at the entry instant from your side's win

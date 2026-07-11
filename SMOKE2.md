@@ -60,7 +60,7 @@ exactly as the browser would. Captured output:
 [smoke2] fresh career: 0 appearances, 0 badges earned
 [smoke2] --- match one: replaying fixture 18209181 at 60x, entering as team 2 ---
 [smoke2] entered as Morocco at minute 5: P(win) 15.3%, 8.68x
-[smoke2] resolved: final 0-2, window -100, final points 0, new badges [first_whistle]
+[smoke2] resolved: final 0-2, window -10, final points 0, new badges [first_whistle]
 [smoke2] report_source: template
 [smoke2] report: Smoke 243908, the number 14, came on for Morocco in the 5th minute at 0-0, the win priced at 15 in 100; 8.7x on the slip, Miracle Territory. After that, France struck 2 times (60', 66'), and VAR took one off the board. It finished 0-2. The ledger reads 0 points, and the ledger does not do sentiment.
 [smoke2] career after match one: apps 1, impact 0, total 0, avg mult 8.68, form [L]

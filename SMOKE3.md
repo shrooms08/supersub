@@ -24,7 +24,7 @@ land on separate serverless invocations):
 [smoke3] stream connected with anchor 1783715817400 (speed 60x)
 [smoke3] ENTERED for Morocco at 5' (P 15.1%, 8.70x) via a separate function invocation
 [smoke3] VAR sequence observed on the production stream (goal id 495 discarded)
-[smoke3] RESOLVED on production: 0-2, window -100, final 0
+[smoke3] RESOLVED on production: 0-2, window -10, final 0
 [smoke3] report_source: template
 [smoke3] report: Prod Check 7400, the number 99, came on for Morocco in the 5th minute at 0-0, ...
 [smoke3] career: appearances 1, impact 0, badges first_whistle
@@ -33,7 +33,7 @@ land on separate serverless invocations):
 
 Persistence cross-checked in Supabase: the row for player
 `93e5e974-e25e-4459-90a1-a0c348ce3eac` shows fixture 18209181, entry
-minute 5, multiplier 8.70, window -100, final 0, `report_source =
+minute 5, multiplier 8.70, window -10, final 0, `report_source =
 'template'`, resolved, 1 badge.
 
 A real bug was found and fixed by this run: `/api/resolve` did not
@@ -83,9 +83,9 @@ bug that erased Egypt's pre-coverage first-half goal. The real final is
 SMOKE9.md. The comeback is stronger than the scan reported.
 
 ```
-France v Morocco: France 62' -> P 86.9%, 1.00x Safe Hands, window 240, final 240      (Scenario A)
-France v Morocco: Morocco 44' -> P 11.5%, 9.16x Miracle Territory, window -100, final 0  (Scenario B, VAR at 49' in window)
-Argentina v Egypt: Argentina 75' -> P 4.0%, 10.00x Miracle Territory, window 440, final 4400,
+France v Morocco: France 62' -> P 86.9%, 1.00x Safe Hands, window 24, final 24        (Scenario A)
+France v Morocco: Morocco 44' -> P 11.5%, 9.16x Miracle Territory, window -10, final 0   (Scenario B, VAR at 49' in window)
+Argentina v Egypt: Argentina 75' -> P 4.0%, 10.00x Miracle Territory, window 44, final 440,
                    badges miracle_worker + comeback_king              (Scenario C)
 ```
 

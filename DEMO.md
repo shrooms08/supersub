@@ -37,9 +37,9 @@ the 60' goal, when the market resumes at 86.9%.
 - ~2:50 France score (60'). The market suspends, then resumes near 87%
 - ~2:55 ENTER when the hero number reads 85%+ and the multiplier on
   offer reads 1.0x. Tier shown: Safe Hands
-- ~3:01 France score again (66'): +100 lands live
-- ~4:14 full time 2-0. Resolution: window 240 (goal, clean sheet, win),
-  1.0x, 240 points. A professional shift, no heroics
+- ~3:01 France score again (66'): +10 lands live
+- ~4:14 full time 2-0. Resolution: window 24 (goal, clean sheet, win),
+  1.0x, 24 points. A professional shift, no heroics
 - Expected career effects: appearance +1, form W
 
 ## Scenario B: The Flop (France v Morocco, Morocco late, the VAR window)
@@ -51,14 +51,14 @@ the VAR overturn lands INSIDE the scoring window, on camera.
 
 - 0:00 connect, pick MOROCCO immediately
 - ~1:31 ENTER at the 44th minute. P(win) reads ~11.5%, multiplier locks
-  ~9.2x, tier Miracle Territory. Provisional shows clean sheet +40
-- ~1:38 Morocco score (48:44). Provisional jumps: goal +100
+  ~9.2x, tier Miracle Territory. Provisional shows clean sheet +4
+- ~1:38 Morocco score (48:44). Provisional jumps: goal +10
 - ~1:40 VAR: overturned. The banner takes the screen, the goal strikes
   through in the breakdown at 0 points, the scoreboard rolls back to
   0-0, provisional drops. THIS is the money shot
-- ~2:50 France score (60'): conceded, -50
-- ~3:01 France again (66'): -50
-- ~4:14 full time 0-2. Resolution: window -100, floored at zero.
+- ~2:50 France score (60'): conceded, -5
+- ~3:01 France again (66'): -5
+- ~4:14 full time 0-2. Resolution: window -10, floored at zero.
   0 points at 9.2x. The report writes the obituary
 - Expected career effects: appearance +1, form L, no badge (Morocco
   concede only two; Wounded needs three)
@@ -90,11 +90,11 @@ close (`scripts/scan-comebacks.ts` output is in SMOKE3.md).
 - ~1:00 to 1:05 ENTER when the hero number reads under 6% (the market
   bottoms at 4.0% around the 75th minute). Multiplier locks 10.0x,
   tier Miracle Territory
-- ~1:09 Argentina pull one back (79'): +100. 1-2
-- ~1:19 Argentina equalise (84'): +100. 2-2
-- ~1:39 Argentina complete it (92'): +100. 3-2, the comeback is done
-- ~2:12 full time 3-2. Resolution: window 440 (three goals, nothing
-  conceded on your watch, win at the whistle), x10.0 = 4400 points
+- ~1:09 Argentina pull one back (79'): +10. 1-2
+- ~1:19 Argentina equalise (84'): +10. 2-2
+- ~1:39 Argentina complete it (92'): +10. 3-2, the comeback is done
+- ~2:12 full time 3-2. Resolution: window 44 (three goals, nothing
+  conceded on your watch, win at the whistle), x10.0 = 440 points
 - Expected career effects: Miracle Worker AND Comeback King into the
   cabinet, Impact Rating detonates, form W, legendary entry count +1
 

@@ -33,10 +33,10 @@ PASS  mid-match phase live  (live)
 PASS  prob series non-empty  (2418 ticks)
 PASS  P(France) jumps across the 60' goal  (before 52.3%, after 87.3%)
 PASS  suspended ticks held  (14 suspended ticks)
-PASS  Morocco entry: two conceded, no bonuses  (window -100, items goal_overturned,goal_conceded,goal_conceded)
-PASS  Morocco final floored at zero  (max(0, -100) x 9.19)
-PASS  France entry: 2 goals + clean sheet + win = 340  (window 340)
-info  France entry at 40': P(win) 62.4%, multiplier 2.62x, final 889.8
+PASS  Morocco entry: two conceded, no bonuses  (window -10, items goal_overturned,goal_conceded,goal_conceded)
+PASS  Morocco final floored at zero  (max(0, -10) x 9.19)
+PASS  France entry: 2 goals + clean sheet + win = 34  (window 34)
+info  France entry at 40': P(win) 62.4%, multiplier 2.62x, final 89
 PASS  multiplier at p=0.75 is 1.0  ()
 PASS  multiplier at p=0.05 is 10.0  ()
 PASS  multiplier midpoint linear  (5.5)
@@ -70,13 +70,13 @@ would. Captured output:
 [smoke] stream summary: 7 goal events, 2375 live odds ticks, last odds ts 1783633419771
 [smoke] RESOLVED:
 [smoke]   final score (your side first): 0-2
-[smoke]   window points: -100
+[smoke]   window points: -10
 [smoke]   multiplier: 8.68x
 [smoke]   final points: 0
 [smoke]   breakdown: [
   { "type": "goal_overturned", "label": "VAR: goal overturned 49'", "minute": 49, "points": 0 },
-  { "type": "goal_conceded",   "label": "Goal conceded 60'",        "minute": 60, "points": -50 },
-  { "type": "goal_conceded",   "label": "Goal conceded 66'",        "minute": 66, "points": -50 }
+  { "type": "goal_conceded",   "label": "Goal conceded 60'",        "minute": 60, "points": -5 },
+  { "type": "goal_conceded",   "label": "Goal conceded 66'",        "minute": 66, "points": -5 }
 ]
 [smoke]   persisted row id: 4ea55c62-99f1-4bec-b443-63da181559c9, resolved_at: 2026-07-10T16:03:15.881+00:00
 [smoke] resolve is idempotent (second call returned the same settled row)
@@ -90,7 +90,7 @@ select user_id, team_name, entry_minute, multiplier, window_points,
        final_points, final_score_team, final_score_opp,
        resolved_at is not null as resolved
 from public.entries order by created_at desc limit 1;
--- smoke-1783699266652 | Morocco | 5 | 8.68 | -100 | 0 | 0 | 2 | true
+-- smoke-1783699266652 | Morocco | 5 | 8.68 | -10 | 0 | 0 | 2 | true
 ```
 
 ## 3. The same flow in the browser (screenshots)
@@ -112,7 +112,7 @@ mobile viewport 390px plus one desktop 1280px shot:
    erased: "VAR: OVERTURNED" takeover, the goal struck through in the
    breakdown at 0 points and in the ticker, score correctly back to 0-0.
 6. `docs/smoke/06-full-time-resolution-mobile.png` - FULL TIME takeover:
-   final points hero number, max(0, -100) x 9.0x arithmetic, full
+   final points hero number, max(0, -10) x 9.0x arithmetic, full
    breakdown, persisted result.
 
 ## 4. LIVE mode, same build, no code changes

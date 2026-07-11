@@ -4,6 +4,14 @@ Captured 2026-07-11. Trigger: the fold computed Argentina v Egypt
 (fixture 18202701) as 3-1; the real-world result was 3-2. The delta
 looked like the VAR-discarded Egypt goal. Audit first, then fix.
 
+> SCALE NOTE (2026-07-11, later the same day): after this audit, the
+> window scoring constants were divided by 10 (goal +10, conceded -5,
+> clean window +4, win +10, draw salvaged +6; multiplier and tiers
+> unchanged). Any hundreds-scale points figure below (e.g. window 340,
+> 4400 points) predates that rescale; divide by 10 for the current
+> value. The rescale, the entry recompute, and the pre-capture purge
+> are documented in the item 8 addendum at the end of this file.
+
 ## Verdict
 
 **FOLD BUG, not a feed defect.** The raw feed encodes 3-2 at every
@@ -331,3 +339,126 @@ and scoring stays inside the regulation event space the multiplier was
 priced on. No bundled fixture has an ET goal, so the ET-goal boundary
 is proven by regression test and synthetic injection, not by a demo
 scenario.
+
+## 8. Scale rescale and pre-capture purge (final pass, 2026-07-11)
+
+The scoring was rescaled and the production roster cut to exactly the
+demo player, as the last pass before capture.
+
+### 8a. The rescale
+
+`src/lib/config/scoring.ts`, window constants divided by 10; multiplier
+shape and tier bounds untouched:
+
+```
+GOAL_FOR             100 -> 10
+GOAL_CONCEDED        -50 -> -5
+CLEAN_SHEET_WINDOW    40 -> 4
+WIN_AT_WHISTLE       100 -> 10
+DRAW_SALVAGED         60 -> 6
+LEGENDARY_POINTS     500 -> 50   (see note)
+```
+
+Note on LEGENDARY_POINTS: it was not in the five window constants, but
+it is a threshold denominated in FINAL points, and final points all
+drop 10x under the rescale (window /10, multiplier unchanged). Left at
+500 it would have made "legendary" 10x harder and emptied the career
+board (minos's two legendary entries, 310.4 and 100.3, both fall below
+500). Rescaling it to 50 preserves the product behaviour: it is the
+same rescale applied to the same unit. The Legendary Entries board on
+the bench is unaffected either way (it ranks the top winning entries by
+multiplier, not by a point threshold).
+
+Nothing else needed a code change: every screen renders points straight
+from `final_points`/`window_points`/`finalPoints()` with no scale logic
+of its own, confirmed by grep and by the UI capture below.
+
+### 8b. Stored entries recomputed
+
+`scripts/recompute-entries.ts` (extended with a `--from <json>` compute
+shape for when the service-role key is not on the machine; it prints
+before/after and emits the UPDATE SQL, which was run through the
+privileged console). Every resolved entry recomputed from its own event
+log against the regulation fold, using its stored multiplier:
+
+```
+minos #9 · 18202701 · x9.129   window 340->34,  final 3103.9->310.4,  score 3-2
+minos #9 · 18209181 · x2.949   window 340->34,  final 1002.5->100.3,  score 2-0
+minos #9 · 18202783 · x7.102   window  40->4,   final  284.1->28.4,   score 0-0
+MINOS #7 · 18202701 · x10.000  window 440->44,  final 4400->440,      score 3-2
+MINOS #7 · 18209181 · x2.642   window 340->34,  final  898.3->89.8,   score 2-0
+MINOS #7 · 18202783 · x5.535   window  40->4,   final  221.4->22.1,   score 0-0
+```
+
+The 4400 miracle becomes 440, exactly as expected. All six were written
+before the purge below removed the MINOS #7 rows, so the database was
+never in a mixed-scale state.
+
+### 8c. Purge to a clean roster
+
+`MINOS #7` (id 300f6676-f0fd-4923-b605-da0d28124b36, the entry
+recreated during the item 7 knockout E2E and earlier work) deleted with
+its 3 entries and 3 badges. A second stray player, `JAFAR #9` (0
+entries, 0 badges), was also present and would have shown as an unrated
+row on The Table; removed as well (operator-confirmed, since it was not
+in the original kill list). The FK-safe order was badges, entries,
+players, through the privileged path.
+
+Production roster after (single query, join fan-out avoided):
+
+```
+minos #9 | entries 3 | resolved 3 | total 439.1 | impact 146.37
+         | legendary 2 (310.4, 100.3 both clear the rescaled 50)
+         | total_players in table: 1
+```
+
+The Table reads exactly [minos]. Legendary Entries shows minos's two
+winning miracles (x9.13 Argentina 310.4, x2.95 France 100.3).
+
+Open item, NOT actioned (out of scope for these three tasks, flagged
+for a decision): minos holds only the `first_whistle` badge. His
+18202701 entry now reads behind-at-entry 1-2 and a 3-2 win, which
+qualifies for `comeback_king`, but badges are awarded once at
+resolution and neither the fold-fix recompute nor this rescale
+re-evaluates them. Awarding it would be a separate, deliberate badge
+backfill.
+
+### 8d. Verification (all green on the rescaled constants)
+
+```
+npx tsc --noEmit          clean
+test:fold                 30/30  (window -10, max(0,-10), 2 goals+cs+win = 34)
+test:badges               30/30
+test:signing              35/35
+smoke:career (HTTP, local production build):
+  match 1 resolved: window -10, final 0 points
+  match 2 resolved: window 4,   final 29.2 points
+  career: apps 2, impact 14.6 = (0 + 29.2)/2   (assertion passed)
+  ALL PHASE 2 SMOKE CHECKS PASSED
+```
+
+Full replay loop in the browser against the local production build
+(`npm run build` then `npm start`), France v Morocco at 60x, entered as
+France at the 8th minute; the on-pitch panel renders the new scale
+directly (screenshot `rescale-onpitch.png`):
+
+```
+VAR: goal overturned 49'          0
+Goal for your side 60'          +10
+Nothing conceded on your watch   +4
+Winning as it stands            +10
+PROVISIONAL POINTS             65.5   (window 24 x 2.7x locked)
+```
+
+Old scale would have read +100 / +40 / +100 and a provisional near 655.
+The displayed points match the new scale end to end. The two smoke
+players (SMOKE-DDEAE, VOSSY) created by these runs were removed
+afterward; the roster is back to exactly minos.
+
+### Files (item 8)
+
+- `src/lib/config/scoring.ts` (constants /10, LEGENDARY_POINTS 50)
+- `scripts/recompute-entries.ts` (added `--from` compute shape)
+- `scripts/test-fold.ts`, `scripts/test-badges.ts` (new-scale assertions)
+- `README.md`, `DEMO.md`, `SHOTLIST.md`, `SMOKE.md`, `SMOKE2.md`,
+  `SMOKE3.md`, `SMOKE7.md`, `SMOKE8.md` (old-scale numbers updated)
