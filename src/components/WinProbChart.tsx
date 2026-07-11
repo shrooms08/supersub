@@ -55,18 +55,23 @@ export interface EntryMark {
   shirtNumber?: number;
 }
 
+const Y25 = () => yFor(0.25);
+
 export function WinProbChart({
   series,
   team,
   kickoffTs,
   feedNow,
   entry,
+  nowMinute,
 }: {
   series: ProbTick[];
   team: 1 | 2;
   kickoffTs: number;
   feedNow: number;
   entry: EntryMark | null;
+  // Derived match minute for the NOW marker before entry.
+  nowMinute?: number;
 }) {
   const x1 = Math.max(feedNow, kickoffTs + 10 * 60_000);
   const x0 = kickoffTs;
@@ -152,7 +157,19 @@ export function WinProbChart({
           </linearGradient>
         </defs>
 
-        {[0.25, 0.5, 0.75].map((p) => (
+        {/* Miracle territory: the band below 25 percent */}
+        <rect x={0} y={Y25()} width={W} height={FLOOR - Y25()} fill="rgba(255,255,255,0.028)" />
+        <line
+          x1={0}
+          x2={W}
+          y1={Y25()}
+          y2={Y25()}
+          stroke="#3a3a42"
+          strokeWidth={1}
+          strokeDasharray="4 5"
+          vectorEffect="non-scaling-stroke"
+        />
+        {[0.5, 0.75].map((p) => (
           <line
             key={p}
             x1={0}
@@ -160,7 +177,7 @@ export function WinProbChart({
             y1={yFor(p)}
             y2={yFor(p)}
             stroke="#26262c"
-            strokeWidth={p === 0.5 ? 2 : 1}
+            strokeWidth={1}
             vectorEffect="non-scaling-stroke"
           />
         ))}
@@ -184,10 +201,11 @@ export function WinProbChart({
             d={solidD}
             fill="none"
             stroke="#c8ff00"
-            strokeWidth={2.5}
+            strokeWidth={2.6}
             vectorEffect="non-scaling-stroke"
             strokeLinejoin="round"
             strokeLinecap="round"
+            style={{ filter: "drop-shadow(0 0 6px rgba(200,255,0,.55))" }}
             pathLength={drawing ? 1400 : undefined}
             strokeDasharray={drawing ? 1400 : undefined}
             className={drawing ? "animate-curve-draw" : undefined}
@@ -257,6 +275,18 @@ export function WinProbChart({
           </g>
         )}
 
+        {!entry && (
+          <line
+            x1={nowX}
+            x2={nowX}
+            y1={0}
+            y2={FLOOR}
+            stroke="#52525b"
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
         {last && (
           <circle cx={nowX} cy={last.y} r={6} fill="#c8ff00" className="animate-live-pulse" />
         )}
@@ -264,7 +294,7 @@ export function WinProbChart({
 
       {/* HTML overlays so text never distorts with preserveAspectRatio none */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        {[0.75, 0.5, 0.25].map((p) => (
+        {[0.75, 0.5].map((p) => (
           <span
             key={p}
             className="absolute right-1 -translate-y-1/2 font-display text-[10px] font-semibold tabular-nums text-chalk-600"
@@ -273,6 +303,20 @@ export function WinProbChart({
             {Math.round(p * 100)}
           </span>
         ))}
+        <span
+          className="absolute right-2 font-label text-[8px] font-bold uppercase tracking-[0.16em] text-chalk-500"
+          style={{ top: `calc(${(Y25() / H) * 100}% + 4px)` }}
+        >
+          &#9666; Miracle territory
+        </span>
+        {!entry && (
+          <span
+            className="absolute top-0 flex -translate-x-1/2 items-center rounded-[4px] bg-pitch-900 px-1.5 py-0.5 font-label text-[8px] font-bold uppercase tracking-[0.14em] text-chalk-500"
+            style={{ left: `${(nowX / W) * 100}%` }}
+          >
+            Now{nowMinute !== undefined ? ` ${nowMinute}'` : ""}
+          </span>
+        )}
         {entry && entry.ts >= x0 && (
           <span
             className="animate-marker-drop absolute top-1 flex -translate-x-1/2 items-center gap-1 rounded-sm border border-volt/40 bg-pitch-900 px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-widest text-volt"
@@ -296,6 +340,20 @@ export function WinProbChart({
             {t.label}
           </span>
         ))}
+      </div>
+
+      <div className="mt-1.5 flex items-center gap-4 border-t border-white/5 pt-2">
+        <span className="flex items-center gap-1.5 font-label text-[9px] font-semibold uppercase tracking-[0.1em] text-chalk-400">
+          <span aria-hidden className="h-[3px] w-3.5 rounded-[2px] bg-volt" />
+          Win probability
+        </span>
+        <span className="flex items-center gap-1.5 font-label text-[9px] font-semibold uppercase tracking-[0.1em] text-chalk-500">
+          <span aria-hidden className="w-3 border-t-2 border-dashed border-chalk-600" />
+          Entry minute
+        </span>
+        <span className="ml-auto hidden font-label text-[9px] font-semibold uppercase tracking-[0.1em] text-chalk-600 sm:inline">
+          Lower the odds &rarr; higher the reward
+        </span>
       </div>
     </div>
   );

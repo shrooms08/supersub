@@ -15,6 +15,7 @@ import { fetchPlayerSummary, type PlayerRow } from "@/lib/player";
 import { fmtMultiplier, fmtPct } from "@/lib/format";
 import { tierForMultiplier } from "@/lib/config/scoring";
 import { probAt, teamProb } from "@/lib/state/winprob";
+import { stateMinute } from "@/lib/state/fold";
 import { finalPoints, multiplierForProb, scoreWindow } from "@/lib/state/scoring";
 import { Scoreboard } from "./Scoreboard";
 import { WinProbChart } from "./WinProbChart";
@@ -105,6 +106,20 @@ export function MatchScreen({
   const lastTick = probSeries.length > 0 ? probSeries[probSeries.length - 1] : null;
   const prob = lastTick ? teamProb(lastTick, team) : null;
   const previewMultiplier = prob !== null ? multiplierForProb(prob) : null;
+
+  // Swing since kickoff for the ticker footer: peak/low/now of the
+  // chosen team's probability, plus the multiplier on offer.
+  const swingStats = useMemo(() => {
+    if (probSeries.length === 0 || prob === null || previewMultiplier === null) return null;
+    let peak = 0;
+    let low = 1;
+    for (const t of probSeries) {
+      const v = teamProb(t, team);
+      if (v > peak) peak = v;
+      if (v < low) low = v;
+    }
+    return { peak, low, now: prob, mult: fmtMultiplier(previewMultiplier) };
+  }, [probSeries, prob, previewMultiplier, team]);
 
   // CTA pulse when the market swung more than 10 points inside 2 minutes.
   const swinging = useMemo(() => {
@@ -269,33 +284,26 @@ export function MatchScreen({
         )}
       </div>
 
-      <section aria-label="Win probability" className="panel p-4">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="whisper">
-              P({team === 1 ? fixture.participant1 : fixture.participant2} win)
-            </p>
-            <p className="hero-number text-6xl leading-none text-volt sm:text-7xl" aria-live="polite">
-              {prob !== null ? fmtPct(prob) : "--"}
-              <span className="text-3xl sm:text-4xl">%</span>
-            </p>
-          </div>
-          <div className="pb-1 text-right">
-            <p className="whisper">
-              {entry
-                ? tierForMultiplier(entry.multiplier).name
-                : previewMultiplier !== null
-                  ? tierForMultiplier(previewMultiplier).name
-                  : "Multiplier on offer"}
-            </p>
-            <p className={`hero-number text-4xl sm:text-5xl ${entry ? "text-chalk-50" : "text-chalk-100"}`}>
-              {entry
-                ? fmtMultiplier(entry.multiplier)
-                : previewMultiplier !== null
-                  ? fmtMultiplier(previewMultiplier)
-                  : "--"}
-            </p>
-          </div>
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[1.65fr_1fr] lg:items-start">
+      <div className="flex min-w-0 flex-col gap-4">
+      <section aria-label="Win probability" className="panel !rounded-2xl p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-label text-[10px] font-bold uppercase tracking-[0.18em] text-chalk-500">
+            Live win probability
+          </p>
+          <p className="flex items-baseline gap-2">
+            <span className="font-label text-[9px] font-semibold uppercase tracking-[0.12em] text-chalk-400">
+              {team === 1 ? fixture.participant1 : fixture.participant2}
+            </span>
+            <span className="hero-number text-[22px] leading-none text-chalk-50" aria-live="polite">
+              {prob !== null ? `${fmtPct(prob)}%` : "--"}
+            </span>
+            {swinging && (
+              <span className="font-label text-[9px] font-bold uppercase text-chalk-500">
+                &#9660; Swinging
+              </span>
+            )}
+          </p>
         </div>
         <div className="mt-3">
           <WinProbChart
@@ -303,6 +311,7 @@ export function MatchScreen({
             team={team}
             kickoffTs={kickoffTs}
             feedNow={feedNow}
+            nowMinute={state ? stateMinute(state, feedNow) : undefined}
             entry={
               entry
                 ? {
@@ -342,6 +351,7 @@ export function MatchScreen({
           </p>
           <TeamPicker fixture={fixture} selected={selected} onSelect={setSelected} locked={false} />
           <EnterCta
+            teamName={team === 1 ? fixture.participant1 : fixture.participant2}
             prob={prob}
             multiplier={previewMultiplier}
             disabled={disabledReason !== null}
@@ -359,10 +369,22 @@ export function MatchScreen({
       )}
 
       {entry && provisional && phase !== "finished" && (
-        <OnPitchPanel entry={entry} provisional={provisional} varBanner={varBanner} />
+        <OnPitchPanel
+          entry={entry}
+          provisional={provisional}
+          varBanner={varBanner}
+          shirtNumber={player?.shirt_number}
+        />
       )}
+      </div>
 
-      <EventTicker items={state.ticker} fixture={fixture} />
+      <EventTicker
+        items={state.ticker}
+        fixture={fixture}
+        live={phase === "live"}
+        swing={phase === "live" ? swingStats : null}
+      />
+      </div>
 
       {phase === "finished" && entry && (
         <ResolutionOverlay

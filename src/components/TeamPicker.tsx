@@ -1,6 +1,7 @@
 "use client";
 
-// Pick your side before you step on. Locks at entry.
+// YOUR TEAM row, per the reference: label plus two flat buttons, the
+// selected side a light chip. Locks at entry.
 
 import type { Fixture } from "@/lib/feed/types";
 
@@ -23,11 +24,12 @@ export function TeamPicker({
         disabled={locked}
         aria-pressed={active}
         onClick={() => onSelect(team)}
-        className={`min-h-[48px] flex-1 truncate rounded-md border px-3 py-3 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50 ${
-          active
-            ? "border-chalk-100 bg-pitch-700 text-chalk-50"
-            : "border-pitch-600 bg-pitch-850 text-chalk-400 hover:border-chalk-600 hover:text-chalk-200"
-        } ${locked ? "cursor-default opacity-90" : ""}`}
+        className="min-h-[40px] flex-1 truncate rounded-lg px-3 py-[9px] font-label text-[10px] font-bold uppercase tracking-[0.1em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50 disabled:cursor-default"
+        style={{
+          border: `1px solid ${active ? "#e4e4e7" : "rgba(255,255,255,.12)"}`,
+          background: active ? "#e4e4e7" : "transparent",
+          color: active ? "#0a0a0c" : "#a1a1aa",
+        }}
       >
         {name}
       </button>
@@ -35,11 +37,12 @@ export function TeamPicker({
   };
 
   return (
-    <fieldset aria-label="Pick your side">
-      <legend className="whisper mb-2">
-        {locked ? "Your side, locked at entry" : "Whose shirt are you pulling on?"}
-      </legend>
-      <div className="flex gap-2">
+    <fieldset aria-label="Pick your side" className="flex items-center gap-3">
+      <legend className="sr-only">Whose shirt are you pulling on?</legend>
+      <span className="font-label text-[9px] font-bold uppercase tracking-[0.14em] text-chalk-500">
+        Your team
+      </span>
+      <div className="flex min-w-0 flex-1 gap-1.5">
         {option(1, fixture.participant1)}
         {option(2, fixture.participant2)}
       </div>

@@ -1,16 +1,68 @@
 "use client";
 
-// The broadcast bug: home / clock+score / away in three columns, the
-// clock big and tabular so it never shifts layout, a 2px volt keyline
-// along the bottom edge. The parent pins it (plus the on-pitch window
-// strip) in ONE sticky stack; this component is layout-only.
+// The broadcast bug, per the binding reference: pinstriped team code
+// blocks, big flanking scores, centre column with the LIVE chip, the
+// tabular clock, and the period label. Team codes derive from the real
+// team names; HOME/AWAY from the feed's home flag. The parent pins this
+// in one sticky stack with the on-pitch strip.
 
 import type { Fixture } from "@/lib/feed/types";
 import { stateMinute, type MatchState } from "@/lib/state/fold";
 import { PhaseBadge } from "./PhaseBadge";
 
-// The bug's center column is tight on a phone; real names go either side,
-// the center shows the score and clock only.
+function code(name: string): string {
+  return name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "---";
+}
+
+function periodLabel(state: MatchState | null): string {
+  if (!state) return "Kickoff soon";
+  if (state.phase === "finished") return "Full time";
+  switch (state.statusId) {
+    case 2:
+      return "First half";
+    case 3:
+      return "Half time";
+    case 4:
+      return "Second half";
+    case 5:
+      return "Full time";
+    default:
+      return state.phase === "live" ? "In play" : "Kickoff soon";
+  }
+}
+
+function TeamBlock({
+  name,
+  home,
+  right,
+  stripes,
+}: {
+  name: string;
+  home: boolean;
+  right?: boolean;
+  stripes: string;
+}) {
+  return (
+    <div className={`flex items-center gap-[11px] ${right ? "flex-row-reverse" : ""}`}>
+      <div
+        aria-hidden
+        className="grid h-9 w-9 flex-none place-items-center rounded-[9px] border border-white/10 bg-[#17171c] font-display text-base font-bold sm:h-[46px] sm:w-[46px] sm:text-xl"
+        style={{ backgroundImage: stripes }}
+      >
+        {code(name)}
+      </div>
+      <div className={`hidden sm:block ${right ? "text-right" : ""}`}>
+        <p className="hero-number max-w-[130px] truncate text-[15px] uppercase leading-none text-chalk-50">
+          {name}
+        </p>
+        <p className="mt-[3px] font-label text-[8px] font-semibold uppercase tracking-[0.16em] text-chalk-600">
+          {home ? "Home" : "Away"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function Scoreboard({
   fixture,
   state,
@@ -29,45 +81,45 @@ export function Scoreboard({
   return (
     <section
       aria-label="Scoreboard"
-      className="panel overflow-hidden border-b-2 !border-b-volt"
+      className="flex items-center justify-center gap-4 rounded-2xl border-b-2 border-b-volt bg-gradient-to-b from-pitch-800 to-pitch-900 px-3 py-3 shadow-[0_10px_30px_-18px_#000,inset_0_1px_0_rgba(255,255,255,.05)] sm:gap-[26px] sm:px-6 sm:py-3.5"
+      style={{ border: "1px solid rgba(255,255,255,.07)", borderBottom: "2px solid #c8ff00" }}
     >
-      <div className="flex items-center justify-between gap-2 border-b border-pitch-700 px-4 py-1.5">
-        <span className="flex items-center gap-2">
+      <TeamBlock
+        name={fixture.participant1}
+        home={fixture.participant1IsHome}
+        stripes="repeating-linear-gradient(90deg, transparent 0 6px, rgba(255,255,255,.05) 6px 7px)"
+      />
+      <span className="hero-number text-4xl leading-none text-chalk-50 sm:text-5xl">
+        {score.p1}
+      </span>
+
+      <div className="min-w-[86px] text-center sm:min-w-[96px]">
+        <span className="inline-flex items-center">
           <PhaseBadge phase={phase} replay={replay} />
-          <span className="label hidden sm:inline">{fixture.competition || "Football"}</span>
         </span>
-        {state?.additionalTimeMinutes && phase === "live" ? (
-          <span className="label">+{state.additionalTimeMinutes} added</span>
-        ) : null}
+        <p
+          className="hero-number mt-1 text-[30px] tabular-nums leading-[0.9] text-chalk-50 sm:text-[42px]"
+          aria-label={`Match minute ${minute}`}
+        >
+          {phase === "upcoming" ? "--'" : `${minute}'`}
+        </p>
+        <p className="mt-0.5 font-label text-[8px] font-semibold uppercase tracking-[0.16em] text-chalk-600">
+          {periodLabel(state)}
+          {phase === "live" && state?.additionalTimeMinutes
+            ? ` · +${state.additionalTimeMinutes}`
+            : ""}
+        </p>
       </div>
 
-      <div className="grid grid-cols-[1fr_auto_1fr] items-stretch">
-        <div className="flex items-center justify-end bg-pitch-850 px-3 py-3 sm:px-5">
-          <p className="hero-number truncate text-right text-xl uppercase leading-none text-chalk-50 sm:text-2xl">
-            {fixture.participant1}
-          </p>
-        </div>
-        <div className="flex flex-col items-center justify-center border-x border-pitch-700 bg-pitch-900 px-4 py-1.5 sm:px-6">
-          <p
-            className="hero-number text-[44px] leading-none text-chalk-50"
-            aria-label={`Match minute ${minute}`}
-          >
-            {phase === "upcoming" ? "--'" : `${minute}'`}
-          </p>
-          <p className="hero-number mt-0.5 text-2xl leading-none text-chalk-100">
-            {score.p1}
-            <span aria-hidden className="px-1 text-pitch-500">
-              -
-            </span>
-            {score.p2}
-          </p>
-        </div>
-        <div className="flex items-center justify-start bg-pitch-850 px-3 py-3 sm:px-5">
-          <p className="hero-number truncate text-xl uppercase leading-none text-chalk-50 sm:text-2xl">
-            {fixture.participant2}
-          </p>
-        </div>
-      </div>
+      <span className="hero-number text-4xl leading-none text-chalk-50 sm:text-5xl">
+        {score.p2}
+      </span>
+      <TeamBlock
+        name={fixture.participant2}
+        home={!fixture.participant1IsHome}
+        right
+        stripes="repeating-linear-gradient(0deg, transparent 0 6px, rgba(255,255,255,.05) 6px 7px)"
+      />
     </section>
   );
 }
