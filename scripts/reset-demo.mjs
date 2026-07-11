@@ -12,21 +12,12 @@
 //   node scripts/reset-demo.mjs --id <playerId>
 //   node scripts/reset-demo.mjs "Player Name" --purge  # also delete the player
 //
-// Uses SUPABASE_URL / SUPABASE_ANON_KEY from the environment or .env.local.
-// To reset a player in PRODUCTION, run with the production values inline:
-//   SUPABASE_URL=... SUPABASE_ANON_KEY=... node scripts/reset-demo.mjs "Name"
+// Deletes entries and badges, so it uses the service-role key via
+// scripts/lib/admin-client.mjs (the anon key cannot delete since
+// migration 0006). Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in
+// .env.local or inline; never commit the service-role key.
 
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { createClient } from "@supabase/supabase-js";
-
-const envPath = path.join(process.cwd(), ".env.local");
-if (fs.existsSync(envPath)) {
-  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
-  }
-}
+import { adminClient } from "./lib/admin-client.mjs";
 
 const args = process.argv.slice(2);
 const purge = args.includes("--purge");
@@ -39,7 +30,7 @@ if (!playerId && !name) {
   process.exit(1);
 }
 
-const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const sb = adminClient();
 
 async function main() {
   let player;

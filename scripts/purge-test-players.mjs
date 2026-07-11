@@ -12,20 +12,12 @@
 // SMOKE- name prefix (or "Smoke " for deliberately old-rule rows), so
 // the whole family purges with two patterns.
 //
-// Uses SUPABASE_URL / SUPABASE_ANON_KEY from env or .env.local; run with
-// production values inline to purge production.
+// Uses the service-role key via scripts/lib/admin-client.mjs (deletion
+// is admin-only since migration 0006; the anon key cannot delete). Set
+// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local or inline;
+// never commit the service-role key.
 
-import * as fs from "node:fs";
-import * as path from "node:path";
-import { createClient } from "@supabase/supabase-js";
-
-const envPath = path.join(process.cwd(), ".env.local");
-if (fs.existsSync(envPath)) {
-  for (const line of fs.readFileSync(envPath, "utf8").split("\n")) {
-    const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
-  }
-}
+import { adminClient } from "./lib/admin-client.mjs";
 
 const args = process.argv.slice(2);
 const execute = args.includes("--execute");
@@ -42,7 +34,7 @@ if (patterns.length === 0 && ids.length === 0) {
   process.exit(1);
 }
 
-const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const sb = adminClient();
 const log = (m) => console.log(`[purge] ${m}`);
 
 async function main() {

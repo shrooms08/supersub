@@ -17,7 +17,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { createHmac } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
+import { adminClient } from "./lib/admin-client.mjs";
 
 const BASE = process.argv[2] ?? "http://localhost:3000";
 const envPath = path.join(process.cwd(), ".env.local");
@@ -86,7 +86,7 @@ const patch = await fetch(`${BASE}/api/player`, {
 check("rename answers 403", patch.status === 403, `got ${patch.status}`);
 
 // 6. Legacy row still functions (option A: no migration, old rows keep working)
-const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const sb = adminClient();
 const legacyName = `Smoke Legacy ${String(Date.now()).slice(-4)}`; // old rule: spaces, mixed case; "Smoke " prefix keeps it purgeable
 const { data: legacy, error } = await sb
   .from("players")
