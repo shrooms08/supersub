@@ -9,7 +9,7 @@ import Link from "next/link";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { fmtMultiplier, fmtPoints } from "@/lib/format";
 import { tierForMultiplier } from "@/lib/config/scoring";
-import { POSITION_LABELS, renamePlayer, type PlayerRow, type Position } from "@/lib/player";
+import { POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
 import type { CareerRecord } from "@/lib/career/stats";
 import type { EntryRow } from "@/lib/entry";
 
@@ -52,9 +52,6 @@ function FormChips({ form }: { form: CareerRecord["form"] }) {
 export default function CareerPage() {
   const [data, setData] = useState<CareerPayload | null>(null);
   const [status, setStatus] = useState<"loading" | "none" | "ready">("loading");
-  const [renaming, setRenaming] = useState(false);
-  const [newName, setNewName] = useState("");
-
   const load = async () => {
     const res = await fetch("/api/career", { cache: "no-store" });
     if (res.status === 401) {
@@ -69,15 +66,6 @@ export default function CareerPage() {
   useEffect(() => {
     void load();
   }, []);
-
-  const submitRename = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await renamePlayer(newName.trim());
-    if (res.player) {
-      setRenaming(false);
-      await load();
-    }
-  };
 
   if (status === "loading") {
     return (
@@ -127,46 +115,12 @@ export default function CareerPage() {
         <div className="flex min-w-0 items-center gap-4">
           <PlayerAvatar name={player.name} shirtNumber={player.shirt_number} size={72} />
           <div className="min-w-0">
-            {renaming ? (
-              <form onSubmit={submitRename} className="flex items-center gap-2">
-                <label htmlFor="rename" className="sr-only">
-                  New name
-                </label>
-                <input
-                  id="rename"
-                  autoFocus
-                  maxLength={20}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="min-h-[40px] w-36 rounded-md border border-pitch-600 bg-pitch-900 px-2 py-1 text-base text-chalk-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-                />
-                <button
-                  type="submit"
-                  className="min-h-[40px] rounded-md border border-chalk-600 px-2.5 text-xs font-bold uppercase text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-                >
-                  Ink it
-                </button>
-              </form>
-            ) : (
-              <h1 className="truncate font-display text-2xl font-black uppercase tracking-tight text-chalk-50">
-                {player.name}
-              </h1>
-            )}
+            <h1 className="truncate font-display text-2xl font-black uppercase tracking-tight text-chalk-50">
+              {player.name}
+            </h1>
             <p className="mt-0.5 text-sm text-chalk-400">
               #{player.shirt_number} · {POSITION_LABELS[player.position as Position]}
             </p>
-            {!renaming && (
-              <button
-                type="button"
-                onClick={() => {
-                  setNewName(player.name);
-                  setRenaming(true);
-                }}
-                className="whisper mt-1 rounded-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-              >
-                Change name
-              </button>
-            )}
           </div>
         </div>
         <div className="shrink-0 text-right">

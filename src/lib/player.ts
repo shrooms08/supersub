@@ -48,13 +48,3 @@ export async function createPlayer(params: {
   const body = (await res.json()) as { player?: PlayerRow; error?: string };
   return { ...body, status: res.status };
 }
-
-export async function renamePlayer(name: string): Promise<{ player?: PlayerRow; error?: string; status: number }> {
-  const res = await fetch("/api/player", {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  const body = (await res.json()) as { player?: PlayerRow; error?: string };
-  return { ...body, status: res.status };
-}

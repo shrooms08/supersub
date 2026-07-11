@@ -81,6 +81,25 @@ one appearance and the exact average (145.75) after two, form goes
 [L] then [D, L], every history row has a stored report, and no report
 contains an em or en dash.
 
+Flow note, amended 2026-07-11: player names are now IMMUTABLE. The
+rename path that existed when this document was first captured (career
+page edit plus `PATCH /api/player`) has been removed; signing day warns
+"Choose carefully. This name is permanent." and the API rejects any
+name change unconditionally, verified directly:
+
+```
+$ curl -i -X PATCH /api/player -d '{"name":"Sneaky Rename"}'            # no cookie
+HTTP/1.1 403 Forbidden
+{"error":"The name on the shirt is permanent. No changes, ever."}
+
+$ curl -i -X PATCH /api/player -H "Cookie: supersub_pid=..." -d '{"name":"Sneaky Rename"}'
+HTTP/1.1 403 Forbidden
+{"error":"The name on the shirt is permanent. No changes, ever."}
+
+$ curl /api/player -H "Cookie: supersub_pid=..."   # name unchanged
+{"player":{...,"name":"Immutable Check",...}}
+```
+
 ## 3. Persistence across a server restart
 
 The dev server was killed and restarted (fresh process, empty in-memory

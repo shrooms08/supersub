@@ -63,8 +63,12 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Twenty characters, tops"
+            aria-describedby="player-name-permanent"
             className="min-h-[44px] rounded-md border border-pitch-600 bg-pitch-900 px-3 py-2 text-base text-chalk-50 placeholder:text-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
           />
+          <p id="player-name-permanent" className="text-xs text-chalk-400">
+            Choose carefully. This name is permanent.
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

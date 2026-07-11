@@ -1,7 +1,7 @@
 // Player identity endpoints.
 //   GET    current player + career-at-a-glance for the bench chip
 //   POST   first-run creation; sets the signed identity cookie
-//   PATCH  rename (the player row is immutable in v1 except name)
+//   PATCH  always 403: the player row, name included, is immutable
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/server/supabase";
@@ -93,29 +93,13 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ player: data }, { status: 201 });
 }
 
-export async function PATCH(req: NextRequest) {
-  const player = await currentPlayer();
-  if (!player) {
-    return NextResponse.json({ error: "No player on the books." }, { status: 401 });
-  }
-  let body: { name?: string };
-  try {
-    body = (await req.json()) as { name?: string };
-  } catch {
-    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
-  }
-  const name = validName(body.name);
-  if (!name) {
-    return NextResponse.json({ error: "Name is required, 20 characters or fewer." }, { status: 400 });
-  }
-  const { data, error } = await supabase()
-    .from("players")
-    .update({ name })
-    .eq("id", player.id)
-    .select()
-    .single<PlayerRow>();
-  if (error || !data) {
-    return NextResponse.json({ error: error?.message ?? "rename failed" }, { status: 500 });
-  }
-  return NextResponse.json({ player: data });
+// The player row is immutable, name included. The name on the shirt is
+// the name in every match report ever written about it; changing it would
+// retroactively falsify the record. Rejected unconditionally so a direct
+// API call gets the same answer as the UI (which has no edit path).
+export async function PATCH() {
+  return NextResponse.json(
+    { error: "The name on the shirt is permanent. No changes, ever." },
+    { status: 403 }
+  );
 }
