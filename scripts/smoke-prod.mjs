@@ -50,7 +50,12 @@ async function main() {
   // Player
   const created = await api("/api/player", {
     method: "POST",
-    body: JSON.stringify({ name: `Prod Check ${String(ANCHOR).slice(-4)}`, position: "ST", shirtNumber: 99 }),
+    body: JSON.stringify({
+      // SMOKE- prefix convention: harness identities purge with one pattern.
+      name: `SMOKE-P${String(ANCHOR).slice(-4).replace(/\d/g, (d) => "ABCDEFGHIJ"[Number(d)])}`,
+      position: "ST",
+      shirtNumber: 99,
+    }),
   });
   if (created.status !== 200 && created.status !== 201) {
     throw new Error(`player create failed: HTTP ${created.status} ${JSON.stringify(created.body)}`);

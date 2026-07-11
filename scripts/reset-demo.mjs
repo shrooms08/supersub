@@ -2,6 +2,12 @@
 // can be re-recorded on a clean slate, keeping the player (and the
 // browser's identity cookie) intact.
 //
+// Convention: any player created by tooling (smoke scripts, screenshot
+// drivers, throwaway demos) is named with the SMOKE- prefix, so
+// scripts/purge-test-players.mjs removes the whole family with
+// --pattern "SMOKE-%" --pattern "Smoke %". Camera-facing demo players
+// you intend to keep can be named freely.
+//
 //   node scripts/reset-demo.mjs "Player Name"        # newest player with that name
 //   node scripts/reset-demo.mjs --id <playerId>
 //   node scripts/reset-demo.mjs "Player Name" --purge  # also delete the player

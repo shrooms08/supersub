@@ -63,11 +63,11 @@ for (const [label, name] of [
 
 // 3. Conforming signing
 const suffix = String(Date.now()).slice(-4).replace(/\d/g, (d) => "ABCDEFGHIJ"[Number(d)]);
-const signed = await post({ name: `van-${suffix}`, position: "CB", shirtNumber: 4 });
+const signed = await post({ name: `smoke-${suffix.toLowerCase()}`, position: "CB", shirtNumber: 4 });
 check("conforming surname signs with 201", signed.status === 201, `got ${signed.status}`);
 check(
   "surname stored uppercase",
-  signed.body.player?.name === `VAN-${suffix}`,
+  signed.body.player?.name === `SMOKE-${suffix}`,
   signed.body.player?.name
 );
 const cookie = signed.setCookie?.split(";")[0] ?? "";
@@ -87,7 +87,7 @@ check("rename answers 403", patch.status === 403, `got ${patch.status}`);
 
 // 6. Legacy row still functions (option A: no migration, old rows keep working)
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-const legacyName = `Legacy Row ${String(Date.now()).slice(-4)}`; // old rule: spaces, mixed case
+const legacyName = `Smoke Legacy ${String(Date.now()).slice(-4)}`; // old rule: spaces, mixed case; "Smoke " prefix keeps it purgeable
 const { data: legacy, error } = await sb
   .from("players")
   .insert({ name: legacyName, position: "AM", shirt_number: 88 })
