@@ -1,36 +1,69 @@
 "use client";
 
-// The Bench: the matchday hub. Masthead, your kit card, the slate of
-// fixtures, the table of every player in the instance, the legendary
-// entries, and the on-chain tease. Single column on a phone, two columns
-// at desktop (kit card and table in the left rail, fixtures and legends
-// in the main channel). First visit runs signing day.
+// The Bench: the matchday hub. Masthead, your kit card, then the real
+// World Cup board in four bands (TODAY, COMING UP, RESULTS, and the
+// bundled REPLAYS rail), the table of every player, the legendary
+// entries, and the on-chain tease. Single column on a phone, two
+// columns at desktop. First visit runs signing day.
+//
+// Fixtures come from /api/schedule (real schedule plus canonical result
+// scores, read-only). The three bundled replays always show in their
+// own rail even if the live feed is down: they are the judges' path.
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Masthead } from "@/components/Masthead";
 import { PlayerCard } from "@/components/PlayerCard";
-import { FixtureCard } from "@/components/FixtureCard";
+import { FixtureCard, type FixtureFinal } from "@/components/FixtureCard";
 import { TheTable } from "@/components/TheTable";
 import { LegendaryEntries } from "@/components/LegendaryEntries";
 import { SigningForm } from "@/components/SigningForm";
+import { teamCode } from "@/components/Scoreboard";
 import { fetchPlayerSummary, type PlayerSummary } from "@/lib/player";
+import type { Fixture, Phase } from "@/lib/feed/types";
 import type { FixtureListing } from "@/lib/sources/types";
 import type { MatchdayPayload } from "@/app/api/matchday/route";
+import type { ScheduleResponse } from "@/app/api/schedule/route";
+import type { ResultFixture } from "@/lib/server/schedule";
 
-interface FixturesResponse {
-  mode: "replay" | "live";
-  fixtures: FixtureListing[];
-  error?: string;
+function pensNote(fixture: Fixture, pens: { p1: number; p2: number } | null): string | null {
+  if (!pens || pens.p1 === pens.p2) return null;
+  const winner = pens.p1 > pens.p2 ? fixture.participant1 : fixture.participant2;
+  return `${teamCode(winner)} advanced on penalties ${Math.max(pens.p1, pens.p2)}-${Math.min(
+    pens.p1,
+    pens.p2
+  )}`;
 }
+
+function finalFor(fixture: Fixture, r: ResultFixture): FixtureFinal {
+  return { score: r.score, note: pensNote(fixture, r.pens) };
+}
+
+function SectionHead({ title, count }: { title: string; count: string }) {
+  return (
+    <div className="flex items-baseline justify-between px-1">
+      <h2 className="font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-chalk-500">
+        {title}
+      </h2>
+      <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-600">
+        {count}
+      </p>
+    </div>
+  );
+}
+
+const asListing = (fixture: Fixture, phase: Phase): FixtureListing => ({
+  fixture,
+  phase,
+  mode: "live",
+});
 
 function BenchInner() {
   const searchParams = useSearchParams();
-  const mode = searchParams.get("mode");
   const speed = searchParams.get("speed");
   // OBS-friendly capture mode: hides feed/mode chrome.
   const clean = searchParams.get("clean") === "1";
-  const [data, setData] = useState<FixturesResponse | null>(null);
+  const [sched, setSched] = useState<ScheduleResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PlayerSummary | null>(null);
   const [matchday, setMatchday] = useState<MatchdayPayload | null>(null);
@@ -55,16 +88,11 @@ function BenchInner() {
     let cancelled = false;
     const load = async () => {
       try {
-        const res = await fetch(`/api/fixtures${mode ? `?mode=${mode}` : ""}`, {
-          cache: "no-store",
-        });
-        const body = (await res.json()) as FixturesResponse;
+        const res = await fetch("/api/schedule", { cache: "no-store" });
+        const body = (await res.json()) as ScheduleResponse;
         if (cancelled) return;
-        if (!res.ok) setError(body.error ?? `HTTP ${res.status}`);
-        else {
-          setData(body);
-          setError(null);
-        }
+        setSched(body);
+        setError(null);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
       }
@@ -75,37 +103,38 @@ function BenchInner() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [mode]);
+  }, []);
 
-  const matchHref = (fixtureId: number) => {
+  // Live fixtures wire ENTER to live mode; replays to replay mode.
+  const matchHref = (fixtureId: number, forcedMode: "live" | "replay") => {
     const params = new URLSearchParams();
-    if (mode) params.set("mode", mode);
+    params.set("mode", forcedMode);
     if (speed) params.set("speed", speed);
     if (clean) params.set("clean", "1");
-    const qs = params.toString();
-    return `/match/${fixtureId}${qs ? `?${qs}` : ""}`;
+    return `/match/${fixtureId}?${params.toString()}`;
   };
 
   const player = summary?.player ?? null;
-  const liveFixtures = (data?.fixtures ?? []).filter((f) => f.phase === "live");
-  const liveNow = liveFixtures.length > 0;
 
-  // Banner mini stats, derived from the matchday results map (no API
-  // change: every value is already served).
   const myResults = Object.values(matchday?.you?.results ?? {});
-  const totalPoints = myResults.length
-    ? myResults.reduce((sum, r) => sum + r.points, 0)
-    : null;
+  const totalPoints = myResults.length ? myResults.reduce((s, r) => s + r.points, 0) : null;
   const averageMultiplier = myResults.length
-    ? myResults.reduce((sum, r) => sum + r.multiplier, 0) / myResults.length
+    ? myResults.reduce((s, r) => s + r.multiplier, 0) / myResults.length
     : null;
 
-  // ONE shared 1s clock drives every countdown on the slate (rider: no
-  // per-card intervals). It only runs while a real upcoming fixture needs
-  // it; replay fixtures are on demand and show no countdown.
-  const needsClock = (data?.fixtures ?? []).some(
-    (f) => f.phase === "upcoming" && f.mode !== "replay"
-  );
+  const today = sched?.today ?? [];
+  const comingUp = sched?.comingUp ?? [];
+  const results = sched?.results ?? [];
+  const replays = sched?.replays ?? [];
+  const liveNow = sched?.liveNow ?? false;
+  const liveCount = today.filter((f) => f.live).length;
+  const upcomingCount = comingUp.reduce((n, g) => n + g.fixtures.length, 0);
+  const fixtureCount = sched ? today.length + upcomingCount + results.length : null;
+
+  // ONE shared 1s clock drives every countdown (rider: no per-card
+  // intervals). It runs only while a genuinely upcoming fixture is on
+  // the board.
+  const needsClock = today.some((f) => f.phase === "upcoming") || upcomingCount > 0;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     if (!needsClock) return;
@@ -113,8 +142,7 @@ function BenchInner() {
     return () => clearInterval(t);
   }, [needsClock]);
 
-  // First run (or any playerless visit) lands on Signing Day, not the
-  // hub: the ceremony takes the whole screen, tunnel-quiet, no slate.
+  // First run (or any playerless visit) lands on Signing Day.
   if (summary && !player) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-4 py-10">
@@ -132,11 +160,10 @@ function BenchInner() {
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-5 px-4 py-6 lg:max-w-5xl">
       <Masthead
         liveNow={liveNow}
-        liveCount={liveFixtures.length}
-        fixtureCount={data ? data.fixtures.length : null}
+        liveCount={liveCount}
+        fixtureCount={fixtureCount}
         dateMs={Date.now()}
       />
-      {data && !clean && <p className="whisper -mt-3">Feed: {data.mode} mode</p>}
 
       {!summary && (
         <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
@@ -161,20 +188,17 @@ function BenchInner() {
           />
 
           <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1.55fr_1fr] lg:items-start">
-            <div className="flex min-w-0 flex-col gap-5">
-              <section aria-label="The slate" className="flex flex-col gap-2.5">
-                <div className="flex items-baseline justify-between px-1">
-                  <h2 className="font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-chalk-500">
-                    Today&apos;s fixtures
-                  </h2>
-                  <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-600">
-                    {data ? `${data.fixtures.length} listed` : "Checking the board"}
-                  </p>
-                </div>
+            <div className="flex min-w-0 flex-col gap-6">
+              {/* TODAY */}
+              <section aria-label="Today's fixtures" className="flex flex-col gap-2.5">
+                <SectionHead
+                  title="Today"
+                  count={sched ? `${today.length} listed` : "Checking the board"}
+                />
 
-                {!data && !error && (
+                {!sched && !error && (
                   <>
-                    {[0, 1, 2].map((i) => (
+                    {[0, 1].map((i) => (
                       <div key={i} className="panel-quiet h-28 animate-pulse !rounded-[14px]" />
                     ))}
                   </>
@@ -196,37 +220,108 @@ function BenchInner() {
                   </div>
                 )}
 
-                {data && data.fixtures.length === 0 && (
-                  <div className="panel-quiet !rounded-[14px] px-4 py-6 text-center">
+                {sched && sched.error && today.length === 0 && (
+                  <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
                     <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
-                      Empty tunnel
+                      Schedule feed unavailable
                     </p>
-                    <p className="mt-1.5 font-label text-sm text-chalk-400">
-                      Nothing on the slate right now.
-                    </p>
-                    <p className="whisper mt-1.5">
-                      {data.mode === "live"
-                        ? "Team news lands closer to kickoff."
-                        : "Add a replay bundle under data/replay and it appears here."}
+                    <p className="mt-1.5 font-label text-xs text-chalk-500">
+                      The bundled replays are always available.
                     </p>
                   </div>
                 )}
 
-                {data?.fixtures.map((listing) => (
+                {sched && !sched.error && today.length === 0 && (
+                  <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
+                    <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
+                      No matches today
+                    </p>
+                    <p className="mt-1.5 font-label text-xs text-chalk-500">
+                      See what is coming up below.
+                    </p>
+                  </div>
+                )}
+
+                {today.map((f) => (
                   <FixtureCard
-                    key={listing.fixture.fixtureId}
-                    listing={listing}
-                    result={matchday?.you?.results[listing.fixture.fixtureId] ?? null}
-                    href={matchHref(listing.fixture.fixtureId)}
+                    key={f.fixture.fixtureId}
+                    listing={asListing(f.fixture, f.phase)}
+                    result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
+                    href={matchHref(f.fixture.fixtureId, "live")}
                     now={now}
+                    final={f.phase === "finished" && "score" in f ? finalFor(f.fixture, f) : undefined}
                   />
                 ))}
               </section>
+
+              {/* COMING UP */}
+              {comingUp.length > 0 && (
+                <section aria-label="Coming up" className="flex flex-col gap-2.5">
+                  <SectionHead title="Coming up" count={`${upcomingCount} scheduled`} />
+                  {comingUp.map((group) => (
+                    <div key={group.date} className="flex flex-col gap-2.5">
+                      <p className="px-1 font-label text-[9px] font-bold uppercase tracking-[0.16em] text-chalk-600">
+                        {group.label}
+                      </p>
+                      {group.fixtures.map((f) => (
+                        <FixtureCard
+                          key={f.fixture.fixtureId}
+                          listing={asListing(f.fixture, f.phase)}
+                          result={null}
+                          href={matchHref(f.fixture.fixtureId, "live")}
+                          now={now}
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {/* RESULTS */}
+              {results.length > 0 && (
+                <section aria-label="Results" className="flex flex-col gap-2.5">
+                  <SectionHead title="Results" count={`${results.length} played`} />
+                  {results.map((f) => (
+                    <FixtureCard
+                      key={f.fixture.fixtureId}
+                      listing={asListing(f.fixture, "finished")}
+                      result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
+                      href={matchHref(f.fixture.fixtureId, "live")}
+                      now={now}
+                      final={finalFor(f.fixture, f)}
+                    />
+                  ))}
+                </section>
+              )}
 
               <LegendaryEntries rows={matchday?.legendary ?? []} />
             </div>
 
             <div className="flex min-w-0 flex-col gap-5">
+              {/* REPLAYS rail: the judges' path, always present. */}
+              <section aria-label="Replays" className="flex flex-col gap-2.5">
+                <div className="flex items-baseline justify-between px-1">
+                  <h2 className="font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-chalk-500">
+                    Replays
+                  </h2>
+                  <span className="rounded-md border border-pitch-600 px-2 py-0.5 font-label text-[8px] font-bold uppercase tracking-[0.14em] text-chalk-400">
+                    Demo · judges
+                  </span>
+                </div>
+                <p className="px-1 font-label text-[9px] leading-relaxed text-chalk-600">
+                  Real finished matches, replayable end to end. This is the path the judges take.
+                </p>
+                {replays.map((listing) => (
+                  <FixtureCard
+                    key={listing.fixture.fixtureId}
+                    listing={listing}
+                    result={matchday?.you?.results[listing.fixture.fixtureId] ?? null}
+                    href={matchHref(listing.fixture.fixtureId, "replay")}
+                    now={now}
+                  />
+                ))}
+              </section>
+
               <TheTable rows={matchday?.table ?? []} />
 
               <div
@@ -254,8 +349,6 @@ function BenchInner() {
           </div>
         </>
       )}
-
-
     </main>
   );
 }

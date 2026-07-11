@@ -18,10 +18,12 @@ import type { WindowResult } from "@/lib/career/window";
 function countdownLabel(startTime: number, now: number): string {
   const remaining = startTime - now;
   if (remaining <= 0) return "00:00:00";
-  const h = Math.floor(remaining / 3_600_000);
+  const totalH = Math.floor(remaining / 3_600_000);
+  // Beyond two days a ticking clock is noise; show days and hours.
+  if (totalH >= 48) return `${Math.floor(totalH / 24)}d ${totalH % 24}h`;
   const m = Math.floor((remaining % 3_600_000) / 60_000);
   const s = Math.floor((remaining % 60_000) / 1_000);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(totalH).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 const WDL_CHIP: Record<WindowResult, { bg: string; col: string; bd: string }> = {
@@ -30,21 +32,35 @@ const WDL_CHIP: Record<WindowResult, { bg: string; col: string; bd: string }> = 
   L: { bg: "transparent", col: "#52525b", bd: "#3a3a42" },
 };
 
+// Canonical final state for a finished schedule fixture (SMOKE9 path).
+// `score` null means the feed gave no canonical score, so the card
+// reads FT with no number rather than guessing. `note` is the shootout
+// line when a match went to penalties, per the item-7 convention.
+export interface FixtureFinal {
+  score: { p1: number; p2: number } | null;
+  note: string | null;
+}
+
 export function FixtureCard({
   listing,
   result,
   href,
   now,
+  final,
 }: {
   listing: FixtureListing;
   result: FixtureResult | null;
   href: string;
   now: number;
+  final?: FixtureFinal | null;
 }) {
   const { fixture, phase, mode } = listing;
   const playable = phase === "live" || mode === "replay";
   const isReplay = mode === "replay";
   const upcomingLive = phase === "upcoming" && !isReplay;
+  // A finished schedule fixture (not a bundled replay) shows its final
+  // score in the centre column instead of a kickoff stamp.
+  const showFinal = phase === "finished" && !isReplay && final !== undefined && final !== null;
 
   const inner = (
     <div className="px-[13px] py-3">
@@ -68,6 +84,21 @@ export function FixtureCard({
               <span className="hero-number mt-0.5 block text-[22px] tabular-nums leading-none tracking-[0.04em] text-chalk-300">
                 {countdownLabel(fixture.startTime, now)}
               </span>
+            </>
+          ) : showFinal ? (
+            <>
+              <span className="block font-label text-[8px] font-bold uppercase tracking-[0.16em] text-chalk-600">
+                Full time
+              </span>
+              {final!.score ? (
+                <span className="hero-number mt-0.5 block text-2xl tabular-nums leading-none tracking-[0.04em] text-chalk-50">
+                  {final!.score.p1}&ndash;{final!.score.p2}
+                </span>
+              ) : (
+                <span className="hero-number mt-0.5 block text-sm uppercase leading-none text-chalk-500">
+                  No score
+                </span>
+              )}
             </>
           ) : (
             <>
@@ -125,6 +156,12 @@ export function FixtureCard({
         <span className="mt-[11px] block rounded-[9px] border border-dashed border-white/10 py-2 text-center font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-600">
           Lineups drop at kickoff · Set your entry
         </span>
+      )}
+
+      {!result && showFinal && final!.note && (
+        <p className="mt-[11px] border-t border-white/[0.06] pt-2.5 text-center font-label text-[9px] font-semibold uppercase tracking-[0.12em] text-chalk-500">
+          {final!.note}
+        </p>
       )}
     </div>
   );
