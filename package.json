@@ -14,7 +14,8 @@
     "test:badges": "tsx scripts/test-badges.ts",
     "smoke:career": "node scripts/smoke-career.mjs",
     "test:signing": "tsx scripts/test-signing.ts",
-    "smoke:signing": "node scripts/smoke-signing.mjs"
+    "smoke:signing": "node scripts/smoke-signing.mjs",
+    "live:verify": "tsx scripts/live-verify.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
