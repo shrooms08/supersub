@@ -87,7 +87,18 @@ function BenchInner() {
   };
 
   const player = summary?.player ?? null;
-  const liveNow = (data?.fixtures ?? []).some((f) => f.phase === "live");
+  const liveFixtures = (data?.fixtures ?? []).filter((f) => f.phase === "live");
+  const liveNow = liveFixtures.length > 0;
+
+  // Banner mini stats, derived from the matchday results map (no API
+  // change: every value is already served).
+  const myResults = Object.values(matchday?.you?.results ?? {});
+  const totalPoints = myResults.length
+    ? myResults.reduce((sum, r) => sum + r.points, 0)
+    : null;
+  const averageMultiplier = myResults.length
+    ? myResults.reduce((sum, r) => sum + r.multiplier, 0) / myResults.length
+    : null;
 
   // ONE shared 1s clock drives every countdown on the slate (rider: no
   // per-card intervals). It only runs while a real upcoming fixture needs
@@ -119,7 +130,12 @@ function BenchInner() {
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-5 px-4 py-6 lg:max-w-5xl">
-      <Masthead liveNow={liveNow} dateMs={Date.now()} />
+      <Masthead
+        liveNow={liveNow}
+        liveCount={liveFixtures.length}
+        fixtureCount={data ? data.fixtures.length : null}
+        dateMs={Date.now()}
+      />
       {data && !clean && <p className="whisper -mt-3">Feed: {data.mode} mode</p>}
 
       {!summary && (
@@ -133,103 +149,113 @@ function BenchInner() {
       )}
 
       {player && (
-        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
-          {/* Left rail on desktop; interleaved by order on mobile */}
-          <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-5">
-            <div className="order-1 lg:order-none">
-              <PlayerCard
-                player={player}
-                appearances={summary?.appearances ?? 0}
-                impactRating={summary?.impactRating ?? null}
-                form={matchday?.you?.form ?? []}
-                nextBadge={matchday?.you?.nextBadge ?? null}
-              />
-            </div>
-            <div className="order-3 lg:order-none">
-              <TheTable rows={matchday?.table ?? []} />
-            </div>
-          </div>
+        <>
+          <PlayerCard
+            player={player}
+            appearances={summary?.appearances ?? 0}
+            impactRating={summary?.impactRating ?? null}
+            form={matchday?.you?.form ?? []}
+            nextBadge={matchday?.you?.nextBadge ?? null}
+            totalPoints={totalPoints}
+            averageMultiplier={averageMultiplier}
+          />
 
-          <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-5">
-            <section aria-label="The slate" className="order-2 flex flex-col gap-3 lg:order-none">
-              <div className="flex items-baseline justify-between">
-                <h2 className="label">The slate</h2>
-                <p className="whisper">
-                  {data ? `${data.fixtures.length} fixture${data.fixtures.length === 1 ? "" : "s"} listed` : "Checking the board"}
-                </p>
-              </div>
-
-              {!data && !error && (
-                <>
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="panel-quiet h-28 animate-pulse" />
-                  ))}
-                </>
-              )}
-
-              {error && (
-                <div className="panel p-4">
-                  <p className="font-display text-sm font-black uppercase tracking-wide text-chalk-100">
-                    The feed is down
-                  </p>
-                  <p className="mt-1 text-sm text-chalk-400">{error}</p>
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className="mt-3 min-h-[44px] rounded-md border border-chalk-600 px-3 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
-                  >
-                    Raise the fourth official
-                  </button>
-                </div>
-              )}
-
-              {data && data.fixtures.length === 0 && (
-                <div className="panel-quiet px-4 py-6 text-center">
-                  <p className="font-display text-sm font-black uppercase tracking-wide text-chalk-300">
-                    Empty tunnel
-                  </p>
-                  <p className="mt-1.5 text-sm text-chalk-400">
-                    Nothing on the slate right now.
-                  </p>
-                  <p className="whisper mt-1.5">
-                    {data.mode === "live"
-                      ? "Team news lands closer to kickoff."
-                      : "Add a replay bundle under data/replay and it appears here."}
+          <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1.55fr_1fr] lg:items-start">
+            <div className="flex min-w-0 flex-col gap-5">
+              <section aria-label="The slate" className="flex flex-col gap-2.5">
+                <div className="flex items-baseline justify-between px-1">
+                  <h2 className="font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-chalk-500">
+                    Today&apos;s fixtures
+                  </h2>
+                  <p className="font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-600">
+                    {data ? `${data.fixtures.length} listed` : "Checking the board"}
                   </p>
                 </div>
-              )}
 
-              {data?.fixtures.map((listing) => (
-                <FixtureCard
-                  key={listing.fixture.fixtureId}
-                  listing={listing}
-                  result={matchday?.you?.results[listing.fixture.fixtureId] ?? null}
-                  href={matchHref(listing.fixture.fixtureId)}
-                  now={now}
-                />
-              ))}
-            </section>
+                {!data && !error && (
+                  <>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="panel-quiet h-28 animate-pulse !rounded-[14px]" />
+                    ))}
+                  </>
+                )}
 
-            <div className="order-4 lg:order-none">
+                {error && (
+                  <div className="panel !rounded-[14px] p-4">
+                    <p className="hero-number text-sm uppercase tracking-wide text-chalk-100">
+                      The feed is down
+                    </p>
+                    <p className="mt-1 font-label text-sm text-chalk-400">{error}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="mt-3 min-h-[44px] rounded-md border border-chalk-600 px-3 py-2 font-label text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
+                    >
+                      Raise the fourth official
+                    </button>
+                  </div>
+                )}
+
+                {data && data.fixtures.length === 0 && (
+                  <div className="panel-quiet !rounded-[14px] px-4 py-6 text-center">
+                    <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
+                      Empty tunnel
+                    </p>
+                    <p className="mt-1.5 font-label text-sm text-chalk-400">
+                      Nothing on the slate right now.
+                    </p>
+                    <p className="whisper mt-1.5">
+                      {data.mode === "live"
+                        ? "Team news lands closer to kickoff."
+                        : "Add a replay bundle under data/replay and it appears here."}
+                    </p>
+                  </div>
+                )}
+
+                {data?.fixtures.map((listing) => (
+                  <FixtureCard
+                    key={listing.fixture.fixtureId}
+                    listing={listing}
+                    result={matchday?.you?.results[listing.fixture.fixtureId] ?? null}
+                    href={matchHref(listing.fixture.fixtureId)}
+                    now={now}
+                  />
+                ))}
+              </section>
+
               <LegendaryEntries rows={matchday?.legendary ?? []} />
             </div>
+
+            <div className="flex min-w-0 flex-col gap-5">
+              <TheTable rows={matchday?.table ?? []} />
+
+              <div
+                className="rounded-[14px] p-4 text-center"
+                style={{
+                  border: "1px dashed rgba(200,255,0,.35)",
+                  background: "linear-gradient(180deg, rgba(200,255,0,.05), transparent)",
+                }}
+              >
+                <p className="font-label text-[8px] font-bold uppercase tracking-[0.2em] text-volt">
+                  Coming at full time
+                </p>
+                <p className="hero-number mt-1.5 text-2xl uppercase leading-none text-chalk-50">
+                  Claim your legend
+                </p>
+                <p className="mt-1.5 font-label text-[10px] leading-relaxed text-chalk-400">
+                  Mint your career, appearances, badges and match reports, permanently on
+                  Solana when the tournament ends.
+                </p>
+                <p className="mt-2.5 inline-flex items-center gap-1.5 rounded-[20px] border border-white/10 px-3 py-[7px] font-label text-[9px] font-bold uppercase tracking-[0.14em] text-chalk-600">
+                  &#9678; Solana · Locked until FT
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      <footer className="mt-1 flex flex-col items-center gap-1 border-t border-pitch-700 pb-2 pt-4 text-center sm:flex-row sm:justify-between sm:text-left">
-        <p className="text-xs text-chalk-400">
-          <span className="font-display text-[11px] font-black uppercase tracking-[0.18em] text-chalk-300">
-            Claim your legend
-          </span>
-          <span className="ml-2 rounded-sm bg-pitch-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-chalk-400">
-            Coming soon
-          </span>
-        </p>
-        <p className="text-xs text-chalk-500">
-          Mint your career on Solana when the tournament ends.
-        </p>
-      </footer>
+
     </main>
   );
 }
