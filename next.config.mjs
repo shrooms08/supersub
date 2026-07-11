@@ -6,6 +6,7 @@ const nextConfig = {
     // Vercel; route handlers read it with fs at runtime.
     outputFileTracingIncludes: {
       "/api/**": ["./data/replay/**"],
+      "/judges": ["./data/replay/**"],
     },
   },
   webpack: (config) => {

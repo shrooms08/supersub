@@ -1,47 +1,43 @@
-// One screen for judges. Two doors, three sentences, no tour.
+// The judges' door: one heading, two sentences, then the three bundled
+// replay fixtures. Each replays real recorded TxLINE World Cup data
+// through the exact pipeline the live feed uses. The bench no longer
+// carries a replays rail; this is where the demo path lives.
 
-import Link from "next/link";
+import { createReplaySource } from "@/lib/sources/replay";
+import { JudgesReplays } from "@/components/JudgesReplays";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Super Sub · For the judges",
 };
 
-export default function JudgesPage() {
+export default async function JudgesPage() {
+  let listings = [] as Awaited<ReturnType<ReturnType<typeof createReplaySource>["listFixtures"]>>;
+  try {
+    listings = await createReplaySource().listFixtures();
+  } catch {
+    listings = [];
+  }
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center gap-8 px-4 py-10">
+    <main className="mx-auto flex min-h-screen w-full max-w-xl flex-col justify-center gap-7 px-4 py-10">
       <header className="flex flex-col gap-3 text-center">
-        <h1 className="font-display text-4xl font-black uppercase tracking-tight text-chalk-50">
-          Super Sub
+        <p className="font-label text-[10px] font-bold uppercase tracking-[0.22em] text-volt">
+          Super Sub · For the judges
+        </p>
+        <h1 className="hero-number text-4xl uppercase leading-none text-chalk-50">
+          Replay a real match
         </h1>
-        <p className="text-base leading-relaxed text-chalk-300">
-          You are a fantasy substitute: pick your moment in a real match, enter
-          the pitch, and everything after that minute is yours, multiplied by
-          how lost the cause looked when you stepped on. The tournament is
-          over, so the buttons below replay real recorded TxLINE World Cup data
-          through the exact same pipeline the live feed uses. Create a player,
-          come on for Morocco, and see what the booth takes away.
+        <p className="text-sm leading-relaxed text-chalk-300">
+          Pick your moment in a real recorded World Cup match, enter the pitch, and everything
+          after that minute is yours, multiplied by how lost the cause looked when you stepped on.
+          Each button below replays genuine TxLINE data, every goal and VAR call, through the exact
+          pipeline the live feed uses.
         </p>
       </header>
 
-      <div className="flex flex-col gap-4">
-        <Link
-          href="/match/18209181?mode=replay&speed=8"
-          className="flex min-h-[76px] items-center justify-center rounded-lg bg-volt px-6 py-5 text-center font-display text-xl font-black uppercase tracking-wide text-pitch-950 transition-transform hover:bg-volt-bright active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50 focus-visible:ring-offset-2 focus-visible:ring-offset-pitch-950"
-        >
-          Watch a replayed match live
-        </Link>
-        <Link
-          href="/"
-          className="flex min-h-[76px] items-center justify-center rounded-lg border-2 border-chalk-600 px-6 py-5 text-center font-display text-xl font-black uppercase tracking-wide text-chalk-50 transition-colors hover:border-chalk-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
-        >
-          Create your player and play
-        </Link>
-      </div>
-
-      <p className="whisper text-center">
-        France v Morocco, 2026-07-09, replayed at 8x. Every goal, VAR call, and
-        odds tick below is real.
-      </p>
+      <JudgesReplays listings={listings} />
     </main>
   );
 }

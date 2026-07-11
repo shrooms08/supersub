@@ -12,8 +12,23 @@ import Link from "next/link";
 import type { FixtureListing } from "@/lib/sources/types";
 import type { FixtureResult } from "@/app/api/matchday/route";
 import { PhaseBadge } from "./PhaseBadge";
+import { flagFor } from "@/lib/flags";
 import { fmtKickoffUtc, fmtMultiplier, fmtPoints } from "@/lib/format";
 import type { WindowResult } from "@/lib/career/window";
+
+function TeamName({ name }: { name: string }) {
+  const flag = flagFor(name);
+  return (
+    <>
+      {flag && (
+        <span aria-hidden className="mr-1.5 not-italic">
+          {flag}
+        </span>
+      )}
+      {name}
+    </>
+  );
+}
 
 function countdownLabel(startTime: number, now: number): string {
   const remaining = startTime - now;
@@ -47,12 +62,16 @@ export function FixtureCard({
   href,
   now,
   final,
+  replayReady,
 }: {
   listing: FixtureListing;
   result: FixtureResult | null;
   href: string;
   now: number;
   final?: FixtureFinal | null;
+  // Judges' replay cards: a truthful REPLAY READY chip and a REPLAY THE
+  // MATCH action instead of the schedule-derived phase and enter copy.
+  replayReady?: boolean;
 }) {
   const { fixture, phase, mode } = listing;
   const playable = phase === "live" || mode === "replay";
@@ -68,12 +87,18 @@ export function FixtureCard({
         <span className="font-label text-[9px] font-semibold uppercase tracking-[0.16em] text-chalk-600">
           {fixture.competition || "Football"}
         </span>
-        <PhaseBadge phase={phase} replay={isReplay} />
+        {replayReady ? (
+          <span className="rounded-md px-2 py-0.5 font-label text-[10px] font-bold uppercase tracking-[0.14em] text-volt" style={{ background: "rgba(200,255,0,.12)" }}>
+            Replay ready
+          </span>
+        ) : (
+          <PhaseBadge phase={phase} replay={isReplay} />
+        )}
       </div>
 
       <div className="mt-2.5 flex items-center justify-between gap-3">
         <span className="hero-number min-w-0 flex-1 truncate text-[22px] uppercase leading-none tracking-[0.02em] text-chalk-50">
-          {fixture.participant1}
+          <TeamName name={fixture.participant1} />
         </span>
         <span className="shrink-0 text-center">
           {upcomingLive ? (
@@ -112,7 +137,7 @@ export function FixtureCard({
           )}
         </span>
         <span className="hero-number min-w-0 flex-1 truncate text-right text-[22px] uppercase leading-none tracking-[0.02em] text-chalk-50">
-          {fixture.participant2}
+          <TeamName name={fixture.participant2} />
         </span>
       </div>
 
@@ -148,7 +173,7 @@ export function FixtureCard({
           className="mt-[11px] block rounded-[9px] py-[9px] text-center font-label text-[10px] font-bold uppercase tracking-[0.16em] text-volt"
           style={{ border: "1px solid rgba(200,255,0,.5)", background: "rgba(200,255,0,.1)" }}
         >
-          {phase === "finished" && isReplay ? "Watch it back →" : "Enter the match →"}
+          {replayReady ? "Replay the match →" : phase === "finished" && isReplay ? "Watch it back →" : "Enter the match →"}
         </span>
       )}
 

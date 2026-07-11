@@ -192,7 +192,6 @@ function BenchInner() {
   const today = sched?.today ?? [];
   const comingUp = sched?.comingUp ?? [];
   const results = sched?.results ?? [];
-  const replays = sched?.replays ?? [];
   const liveNow = sched?.liveNow ?? false;
   const liveCount = today.filter((f) => f.live).length;
   const upcomingCount = comingUp.reduce((n, g) => n + g.fixtures.length, 0);
@@ -392,30 +391,6 @@ function BenchInner() {
             </div>
 
             <div className="flex min-w-0 flex-col gap-5">
-              {/* REPLAYS rail: the judges' path, always present. */}
-              <section aria-label="Replays" className="flex flex-col gap-2.5">
-                <div className="flex items-baseline justify-between px-1">
-                  <h2 className="font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-chalk-500">
-                    Replays
-                  </h2>
-                  <span className="rounded-md border border-pitch-600 px-2 py-0.5 font-label text-[8px] font-bold uppercase tracking-[0.14em] text-chalk-400">
-                    Demo · judges
-                  </span>
-                </div>
-                <p className="px-1 font-label text-[9px] leading-relaxed text-chalk-600">
-                  Real finished matches, replayable end to end. This is the path the judges take.
-                </p>
-                {replays.map((listing) => (
-                  <FixtureCard
-                    key={listing.fixture.fixtureId}
-                    listing={listing}
-                    result={matchday?.you?.results[listing.fixture.fixtureId] ?? null}
-                    href={matchHref(listing.fixture.fixtureId, "replay")}
-                    now={now}
-                  />
-                ))}
-              </section>
-
               <TheTable rows={matchday?.table ?? []} />
 
               <ClaimLegend
