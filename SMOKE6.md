@@ -100,3 +100,43 @@ still appearing in The Table and /api/matchday unchanged.
 1280), same driver (types VAN-DIJK, number 4, captures with the live
 crest showing): before is the Phase 1-styled form, after is the full
 contract ceremony.
+
+## Addendum, 2026-07-11: preview 500 on the signing write, fixed
+
+Reported: POST /api/player on the Phase 2 preview answered 500 with
+Content-Length 0 for valid input (MINOS, 7, AM). Root cause, from the
+preview function logs: every env var except ANTHROPIC_API_KEY was
+scoped to Production only, so preview functions had no Supabase keys
+and the supabase() guard threw an unhandled exception. GET /api/player
+passed only because a cookieless request returns before touching
+Supabase; GET /api/matchday was 500 for the same reason.
+
+Fix: all eight vars added to the Preview scope (via the Vercel REST
+API; the CLI's env add for preview scope kept demanding a git branch
+even in its documented no-branch form). Hardening shipped regardless of
+the root cause: the signing route wraps its handler so any failure
+answers JSON 500 ("The pen ran dry. Try again." plus detail), and the
+ceremony treats non-2xx, network failure, or a 10 second timeout as
+failure, prints "The ink did not take. Try again." and re-arms the
+button. Forced-failure proof (Supabase env deliberately blanked on a
+local server): the API answered the JSON 500 and the ceremony showed
+the line with the button re-armed (docs/smoke6/forced-failure.png).
+
+Also in this pass: positions expanded to eleven stored values (LW/RW
+to FWD, LM/RM to MID, LB/RB to DEF, no GK; the request said ten but
+named six additions to the existing five, and the explicit list wins).
+Migration 0003 widens the position CHECK constraint only: no columns,
+tables, or data change. test:signing is now 35 checks.
+
+Re-verification on the fixed preview
+(supersub-l8lcyqj60-shrooms08s-projects.vercel.app): the exact repro
+signs at 201 (MINOS, AM, 7), a new-vocabulary LW signing stores at 201,
+and smoke:signing passes 13/13 when the legacy-cookie step is minted
+with the target environment's secret (the earlier 401 on that one step
+was the test tool using the local dev fallback secret against a
+deployment holding the production secret; an environment mismatch in
+the harness, not an app fault). Fold 16/16, badges 30/30 unchanged.
+Note: deployment protection was disabled on the project so previews are
+publicly reachable for HTTP verification; re-enable in the dashboard if
+previews should be private again. Repro rows (MINOS, WINGER) were
+removed from the shared database after verification.
