@@ -169,5 +169,8 @@ once and never regenerated.
 npx tsc --noEmit                 # exit 0
 npm run build                    # Compiled successfully; /career static,
                                  # /career/[entryId] dynamic, all /api/* dynamic
-npm run test:fold                # Phase 1 fold checks still 17/17
+npm run test:fold                # Phase 1 fold checks still pass, 16/16
+                                 # (correction 2026-07-11: this line originally
+                                 #  said 17/17, a miscount; the suite has had 16
+                                 #  checks since 93cf3a5 and was never modified)
 ```
