@@ -243,3 +243,67 @@ Deployed URL checked:
   GET https://supersub-tau.vercel.app/api/schedule  -> 200
   stream guard live (404 / 200 above)
 ```
+
+## 6. Bench cleanup pass (2026-07-11, later)
+
+Three read-only UI items. No scoring or schema change. Deployed to
+production dark (deployment supersub-e5myb8iwc, canonical alias
+re-pointed) and verified; local build clean, fold 30/30, badges 30/30,
+signing 35/35.
+
+### 1. Replays rail relocated to /judges
+
+The REPLAYS / DEMO-JUDGES rail is gone from the bench. The bench right
+column now holds only THE TABLE and CLAIM YOUR LEGEND (verified: the
+bench HTML no longer contains "Demo" anywhere). /judges is rebuilt as
+one heading ("Replay a real match"), two sentences, then the three
+bundled replay cards. It reads the bundled fixtures server-side, so its
+`data/replay` file-tracing include was added to next.config. The
+server-side playability guard is untouched: bundled ids remain
+enterable in replay mode, everything else already 409s. Direct match
+URLs for the bundled fixtures still work (the capture path), confirmed
+`GET /match/18209181?mode=replay&speed=8 -> 200` on production.
+
+### 2. Truthful replay chips
+
+The judges replay cards no longer show the UPCOMING chip. A `replayReady`
+prop on FixtureCard swaps it for a volt REPLAY READY chip and changes
+the action to REPLAY THE MATCH. Production /judges HTML: REPLAY READY
+present, REPLAY THE MATCH present, "Upcoming" absent.
+
+### 3. Country flags
+
+`src/lib/flags.ts` maps a team name to an emoji flag: regional-indicator
+letters from the ISO alpha-2 code for countries, subdivision (tag) flags
+for the home nations, and null (render nothing) for an unmapped team.
+FixtureCard renders it before each team name via a small TeamName
+helper, so it covers TODAY, RESULTS, UPCOMING, and the judges replay
+cards from one change. Verified in the screenshots: flags render on
+every card including England's subdivision flag, and alignment stays
+clean at 390px.
+
+### Screenshots (scratchpad/cl-shots/)
+
+`cl-today-{mobile,desktop}.png`, `cl-results-{mobile,desktop}.png`,
+`cl-upcoming-{mobile,desktop}.png`, `cl-judges-{mobile,desktop}.png`.
+The judges shot shows all three cards with flags, REPLAY READY chips,
+and REPLAY THE MATCH actions; the results shot shows day headers, flags
+on every row, scores, and the pens line.
+
+### Production verification (supersub-tau)
+
+```
+GET /                              -> 200 (bench, no replays rail)
+GET /judges                        -> REPLAY READY + REPLAY THE MATCH,
+                                      no UPCOMING chip, flags present
+GET /?tab=results                  -> 200 (tabs intact)
+GET /match/18209181?mode=replay&speed=8 -> 200 (capture path)
+```
+
+### Timebox note
+
+Local verification finished and the build deployed at 21:02 UTC. The
+soft target was 21:00 UTC; the alias flip waited a moment for the build
+to report Ready. Production was stable and verified well inside the hard
+21:15 UTC limit. The claim feature remains dark (flag off); this pass
+did not touch it beyond carrying it along on the same branch.
