@@ -23,7 +23,7 @@ function prefersReducedMotion(): boolean {
 }
 
 // Counts from 0 to target over the duration once armed.
-function useCountUp(target: number, armed: boolean, durationMs = 1400): number {
+function useCountUp(target: number, armed: boolean, durationMs = 1000): number {
   const [value, setValue] = useState(0);
   const raf = useRef<number>(0);
   useEffect(() => {
@@ -46,10 +46,13 @@ function useCountUp(target: number, armed: boolean, durationMs = 1400): number {
   return value;
 }
 
-// Reveal schedule, ms from the resolved row arriving.
+// Canonical reveal schedule, ms from the resolved row arriving:
+// result lines 0.3s, multiplier count-up 1.1s (1.0s duration), badges
+// 2.6s staggered 120ms, gazette clipping 3.6s. Total under 4 seconds.
+const STAGE_RESULT = 300;
 const STAGE_MULTIPLIER = 1100;
-const STAGE_BADGES = 3100;
-const STAGE_REPORT = 3900;
+const STAGE_BADGES = 2600;
+const STAGE_REPORT = 3600;
 
 export function ResolutionOverlay({
   entry,
@@ -73,20 +76,21 @@ export function ResolutionOverlay({
   useEffect(() => {
     if (!resolved) return;
     if (prefersReducedMotion()) {
-      setStage(3);
+      setStage(4);
       return;
     }
     setStage(0);
     const timers = [
-      window.setTimeout(() => setStage(1), STAGE_MULTIPLIER),
-      window.setTimeout(() => setStage(2), STAGE_BADGES),
-      window.setTimeout(() => setStage(3), STAGE_REPORT),
+      window.setTimeout(() => setStage(1), STAGE_RESULT),
+      window.setTimeout(() => setStage(2), STAGE_MULTIPLIER),
+      window.setTimeout(() => setStage(3), STAGE_BADGES),
+      window.setTimeout(() => setStage(4), STAGE_REPORT),
     ];
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, [resolved]);
 
   const finalTarget = entry?.final_points ?? 0;
-  const counted = useCountUp(finalTarget, resolved && stage >= 1);
+  const counted = useCountUp(finalTarget, resolved && stage >= 2);
 
   return (
     <div
@@ -97,8 +101,8 @@ export function ResolutionOverlay({
     >
       <div className="panel mx-auto my-6 w-full max-w-md overflow-hidden bg-pitch-900 shadow-2xl">
         <div className="border-b border-pitch-700 px-6 py-4 text-center">
-          <p className="display-expanded font-display text-2xl font-black uppercase tracking-[0.2em] text-chalk-50">
-            Full time
+          <p className="font-masthead text-[42px] leading-none text-chalk-50">
+            Full Time
           </p>
           {entry?.resolved_at && (
             <p className="whisper mt-1">
@@ -121,7 +125,7 @@ export function ResolutionOverlay({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-4 min-h-[44px] rounded-md border border-chalk-600 px-4 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+              className="mt-4 min-h-[44px] rounded-md border border-chalk-600 px-4 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
             >
               Ask again
             </button>
@@ -130,8 +134,8 @@ export function ResolutionOverlay({
 
         {resolved && entry && (
           <>
-            {/* Stage 0: the window, line by line */}
-            <div className="animate-rise-in">
+            {/* Stage 1: the window, line by line */}
+            <div className={stage >= 1 ? "animate-reveal-up" : "opacity-0"}>
               <ul className="divide-y divide-pitch-800">
                 {(entry.breakdown ?? []).map((item, i) => (
                   <li
@@ -161,19 +165,19 @@ export function ResolutionOverlay({
               </ul>
             </div>
 
-            {/* Stage 1: the multiplier does its work */}
+            {/* Stage 2: the multiplier does its work */}
             <div
               className={`border-t border-pitch-700 px-6 py-6 text-center transition-opacity duration-300 ${
-                stage >= 1 ? "opacity-100" : "opacity-0"
+                stage >= 2 ? "opacity-100" : "opacity-0"
               }`}
-              aria-hidden={stage < 1}
+              aria-hidden={stage < 2}
             >
               <p className="whisper">
                 max(0, {entry.window_points}) x {fmtMultiplier(entry.multiplier)} ·{" "}
                 {tierForMultiplier(entry.multiplier).name}
               </p>
-              <p className="hero-number mt-1 text-7xl leading-none text-volt" aria-live="polite">
-                {fmtPoints(stage >= 1 ? counted : 0)}
+              <p className="hero-number mt-1 text-[88px] leading-none text-volt" aria-live="polite">
+                {fmtPoints(stage >= 2 ? counted : 0)}
               </p>
               <p className="mt-2 text-xs text-chalk-500">
                 You came on at {entry.entry_minute}&apos; with P(win){" "}
@@ -181,19 +185,27 @@ export function ResolutionOverlay({
               </p>
             </div>
 
-            {/* Stage 2: into the cabinet */}
-            {badgeNames.length > 0 && stage >= 2 && (
-              <div className="animate-slam-in border-t border-pitch-700 bg-pitch-850 px-6 py-3 text-center">
+            {/* Stage 3: into the cabinet, slammed in one by one */}
+            {badgeNames.length > 0 && stage >= 3 && (
+              <div className="border-t border-pitch-700 bg-pitch-850 px-6 py-3 text-center">
                 <p className="label">Into the cabinet</p>
-                <p className="display-condensed mt-1 font-display text-lg font-black uppercase tracking-wide text-chalk-50">
-                  {badgeNames.join(" · ")}
+                <p className="mt-1 flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
+                  {badgeNames.map((name, i) => (
+                    <span
+                      key={name}
+                      className="animate-slam-in hero-number inline-block text-lg uppercase tracking-wide text-chalk-50"
+                      style={{ animationDelay: `${i * 120}ms` }}
+                    >
+                      {name}
+                    </span>
+                  ))}
                 </p>
               </div>
             )}
 
-            {/* Stage 3: the morning paper */}
-            {entry.report && stage >= 3 && (
-              <div className="animate-rise-in border-t border-pitch-700 px-4 py-4">
+            {/* Stage 4: the morning paper */}
+            {entry.report && stage >= 4 && (
+              <div className="animate-reveal-up border-t border-pitch-700 px-4 py-4">
                 <MatchReportCard entry={entry} />
               </div>
             )}
@@ -203,13 +215,13 @@ export function ResolutionOverlay({
         <div className="flex gap-2 border-t border-pitch-700 px-6 py-4">
           <Link
             href="/career"
-            className="block min-h-[48px] flex-1 rounded-md border border-chalk-600 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-chalk-100 transition-colors hover:border-chalk-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+            className="block min-h-[48px] flex-1 rounded-md border border-chalk-600 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-chalk-100 transition-colors hover:border-chalk-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
           >
             The career
           </Link>
           <Link
             href="/"
-            className="block min-h-[48px] flex-1 rounded-md border border-pitch-600 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-chalk-300 transition-colors hover:border-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+            className="block min-h-[48px] flex-1 rounded-md border border-pitch-600 px-4 py-3 text-center text-sm font-bold uppercase tracking-wide text-chalk-300 transition-colors hover:border-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
           >
             The bench
           </Link>

@@ -89,6 +89,19 @@ function BenchInner() {
   const player = summary?.player ?? null;
   const liveNow = (data?.fixtures ?? []).some((f) => f.phase === "live");
 
+  // ONE shared 1s clock drives every countdown on the slate (rider: no
+  // per-card intervals). It only runs while a real upcoming fixture needs
+  // it; replay fixtures are on demand and show no countdown.
+  const needsClock = (data?.fixtures ?? []).some(
+    (f) => f.phase === "upcoming" && f.mode !== "replay"
+  );
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!needsClock) return;
+    const t = setInterval(() => setNow(Date.now()), 1_000);
+    return () => clearInterval(t);
+  }, [needsClock]);
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-5 px-4 py-6 lg:max-w-5xl">
       <Masthead liveNow={liveNow} dateMs={Date.now()} />
@@ -159,7 +172,7 @@ function BenchInner() {
                   <button
                     type="button"
                     onClick={() => window.location.reload()}
-                    className="mt-3 min-h-[44px] rounded-md border border-chalk-600 px-3 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                    className="mt-3 min-h-[44px] rounded-md border border-chalk-600 px-3 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
                   >
                     Raise the fourth official
                   </button>
@@ -188,6 +201,7 @@ function BenchInner() {
                   listing={listing}
                   result={matchday?.you?.results[listing.fixture.fixtureId] ?? null}
                   href={matchHref(listing.fixture.fixtureId)}
+                  now={now}
                 />
               ))}
             </section>

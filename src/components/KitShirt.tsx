@@ -58,11 +58,10 @@ export function KitShirt({
         x="50"
         y="66"
         textAnchor="middle"
-        fontFamily="var(--font-archivo), ui-sans-serif"
+        fontFamily="var(--font-saira), Arial Narrow, sans-serif"
         fontWeight="900"
-        fontSize="34"
+        fontSize="38"
         fill={spec.foreground}
-        style={{ fontStretch: "78%" }}
       >
         {shirtNumber}
       </text>

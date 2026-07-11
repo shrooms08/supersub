@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { PixelCrest } from "@/components/PixelCrest";
 import { fmtMultiplier, fmtPoints } from "@/lib/format";
 import { tierForMultiplier } from "@/lib/config/scoring";
 import { POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
@@ -36,7 +36,7 @@ function TierTag({ multiplier }: { multiplier: number }) {
   const tier = tierForMultiplier(multiplier).name;
   const look =
     tier === "Miracle Territory"
-      ? "border-volt-dim/60 text-volt-dim"
+      ? "border-volt/50 text-volt"
       : tier === "The Gamble"
         ? "border-chalk-400 text-chalk-100"
         : tier === "Squad Rotation"
@@ -44,7 +44,7 @@ function TierTag({ multiplier }: { multiplier: number }) {
           : "border-pitch-500 text-chalk-500";
   return (
     <span
-      className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${look}`}
+      className={`rounded-sm border px-1.5 py-0.5 font-label text-[9px] font-bold uppercase tracking-[0.16em] ${look}`}
     >
       {tier} {fmtMultiplier(multiplier)}
     </span>
@@ -88,7 +88,7 @@ export default function CareerPage() {
         <p className="text-sm text-chalk-400">Sign your forms on the bench first.</p>
         <Link
           href="/"
-          className="min-h-[44px] rounded-md border border-chalk-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          className="min-h-[44px] rounded-md border border-chalk-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
         >
           To the bench
         </Link>
@@ -103,7 +103,7 @@ export default function CareerPage() {
       <header className="flex items-center justify-between gap-2">
         <Link
           href="/"
-          className="whisper rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          className="whisper rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
         >
           &lsaquo; The bench
         </Link>
@@ -113,13 +113,13 @@ export default function CareerPage() {
       <section aria-label="Player" className="panel overflow-hidden">
         <div className="flex items-center justify-between gap-2 border-b border-pitch-700 px-5 py-2">
           <span className="label">Squad profile</span>
-          <PlayerAvatar name={player.name} shirtNumber={player.shirt_number} size={22} />
+          <PixelCrest seed={`${player.name}-${player.shirt_number}`} number={player.shirt_number} size={22} />
         </div>
         <div className="flex items-center justify-between gap-4 p-5">
           <div className="flex min-w-0 items-center gap-4">
             <KitShirt name={player.name} shirtNumber={player.shirt_number} size={80} className="shrink-0" />
             <div className="min-w-0">
-              <h1 className="display-condensed truncate font-display text-2xl font-black uppercase leading-none tracking-tight text-chalk-50 sm:text-3xl">
+              <h1 className="truncate font-display text-2xl font-black uppercase leading-none tracking-tight text-chalk-50 sm:text-3xl">
                 {player.name}
               </h1>
               <p className="mt-1 text-sm text-chalk-400">
@@ -129,7 +129,7 @@ export default function CareerPage() {
             </div>
           </div>
           <div className="shrink-0 text-right">
-            <p className="hero-number text-6xl leading-none text-volt sm:text-7xl">
+            <p className="hero-number text-[64px] leading-[0.86] text-volt sm:text-[96px]">
               {record.impactRating === null ? "--" : Math.round(record.impactRating)}
             </p>
             <p className="whisper mt-1">Impact rating</p>
@@ -151,7 +151,7 @@ export default function CareerPage() {
             { label: "Legendary", value: String(record.legendaryCount) },
           ].map((stat) => (
             <div key={stat.label} className="bg-pitch-900 px-4 py-3">
-              <p className="hero-number text-2xl text-chalk-50">
+              <p className="hero-number text-[30px] font-semibold leading-none text-chalk-50">
                 {stat.value}
               </p>
               <p className="whisper mt-0.5">{stat.label}</p>
@@ -175,12 +175,12 @@ export default function CareerPage() {
                 key={badge.key}
                 className={`flex flex-col gap-1 px-4 py-3 ${
                   earned
-                    ? "bg-pitch-850 shadow-[inset_0_0_0_1px_rgba(214,255,63,0.4),inset_0_0_18px_-8px_rgba(214,255,63,0.25)]"
-                    : "bg-pitch-900 shadow-[inset_0_0_0_1px_rgba(58,58,66,0.6)] opacity-80"
+                    ? "animate-glow-breath-slow bg-pitch-850 shadow-[inset_0_0_0_1px_rgba(200,255,0,0.4)]"
+                    : "bg-pitch-900 opacity-[0.22] shadow-[inset_0_0_0_1px_rgba(58,58,66,0.6)]"
                 }`}
               >
                 <p
-                  className={`display-condensed font-display text-sm font-black uppercase tracking-wide ${
+                  className={`hero-number text-sm uppercase tracking-wide ${
                     earned ? "text-chalk-50" : "text-chalk-600"
                   }`}
                 >
@@ -212,7 +212,7 @@ export default function CareerPage() {
               <li key={entry.id}>
                 <Link
                   href={`/career/${entry.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-pitch-850 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-pitch-850 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-chalk-100">

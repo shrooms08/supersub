@@ -23,7 +23,7 @@ export function TeamPicker({
         disabled={locked}
         aria-pressed={active}
         onClick={() => onSelect(team)}
-        className={`min-h-[48px] flex-1 truncate rounded-md border px-3 py-3 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt ${
+        className={`min-h-[48px] flex-1 truncate rounded-md border px-3 py-3 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50 ${
           active
             ? "border-chalk-100 bg-pitch-700 text-chalk-50"
             : "border-pitch-600 bg-pitch-850 text-chalk-400 hover:border-chalk-600 hover:text-chalk-200"

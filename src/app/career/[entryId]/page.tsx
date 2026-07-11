@@ -50,7 +50,7 @@ export default function MatchReportPage() {
         </p>
         <Link
           href="/career"
-          className="min-h-[44px] rounded-md border border-chalk-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          className="min-h-[44px] rounded-md border border-chalk-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
         >
           Back to the career
         </Link>
@@ -63,7 +63,7 @@ export default function MatchReportPage() {
       <header className="flex items-center justify-between gap-2">
         <Link
           href="/career"
-          className="whisper rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          className="whisper rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
         >
           &lsaquo; The career
         </Link>

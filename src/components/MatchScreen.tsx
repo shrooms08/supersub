@@ -203,7 +203,7 @@ export function MatchScreen({
   if (!meta || !state) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-4 px-4 py-6">
-        <Link href="/" className="whisper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt">
+        <Link href="/" className="whisper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50">
           &lsaquo; Back to the bench
         </Link>
         <div className="h-20 animate-pulse rounded-lg border border-pitch-700 bg-pitch-850" />
@@ -224,7 +224,7 @@ export function MatchScreen({
       <header className="flex items-center justify-between gap-2">
         <Link
           href="/"
-          className="whisper rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          className="whisper rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
         >
           &lsaquo; The bench
         </Link>
@@ -242,31 +242,32 @@ export function MatchScreen({
         </p>
       )}
 
-      {/* Your shift, pinned while you scroll. The window never leaves the
-          frame while the match is live. */}
-      {entry && provisional && phase === "live" && (
-        <div
-          role="status"
-          className="sticky top-2 z-40 flex items-center justify-between gap-3 rounded-md border border-pitch-500 bg-pitch-900/95 px-3 py-2 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.9)] backdrop-blur-sm"
-        >
-          <span className="flex min-w-0 items-baseline gap-2">
-            <span className="hero-number text-lg leading-none text-chalk-50">
-              {player?.shirt_number ?? entry.team}
+      {/* One sticky stack: the broadcast bug, and beneath it (never
+          overlapping) your window strip while you are on the pitch. */}
+      <div className="sticky top-2 z-40 flex flex-col gap-2">
+        <Scoreboard fixture={fixture} state={state} feedNow={feedNow} replay={meta.mode === "replay"} />
+        {entry && provisional && phase === "live" && (
+          <div
+            role="status"
+            className="flex items-center justify-between gap-3 rounded-xl border border-pitch-500 bg-pitch-900/95 px-3 py-2 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.9)] backdrop-blur-sm"
+          >
+            <span className="flex min-w-0 items-baseline gap-2">
+              <span className="hero-number text-lg leading-none text-chalk-50">
+                {player?.shirt_number ?? entry.team}
+              </span>
+              <span className="label truncate !text-chalk-300">
+                On {entry.entry_minute}&apos; · was {fmtPct(entry.win_prob_at_entry)}%
+              </span>
             </span>
-            <span className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-chalk-300">
-              On {entry.entry_minute}&apos; · was {fmtPct(entry.win_prob_at_entry)}%
+            <span className="shrink-0 text-right">
+              <span className="hero-number text-2xl leading-none text-volt">
+                {finalPoints(provisional.windowPoints, entry.multiplier)}
+              </span>
+              <span className="whisper ml-1.5">Provisional</span>
             </span>
-          </span>
-          <span className="shrink-0 text-right">
-            <span className="hero-number text-2xl leading-none text-volt">
-              {finalPoints(provisional.windowPoints, entry.multiplier)}
-            </span>
-            <span className="whisper ml-1.5">Provisional</span>
-          </span>
-        </div>
-      )}
-
-      <Scoreboard fixture={fixture} state={state} feedNow={feedNow} replay={meta.mode === "replay"} />
+          </div>
+        )}
+      </div>
 
       <section aria-label="Win probability" className="panel p-4">
         <div className="flex items-end justify-between gap-4">
@@ -326,7 +327,7 @@ export function MatchScreen({
           </p>
           <Link
             href="/"
-            className="mt-3 inline-block min-h-[44px] rounded-md border border-chalk-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+            className="mt-3 inline-block min-h-[44px] rounded-md border border-chalk-600 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
           >
             Sign your forms
           </Link>

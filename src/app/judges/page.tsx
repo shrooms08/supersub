@@ -32,7 +32,7 @@ export default function JudgesPage() {
         </Link>
         <Link
           href="/"
-          className="flex min-h-[76px] items-center justify-center rounded-lg border-2 border-chalk-600 px-6 py-5 text-center font-display text-xl font-black uppercase tracking-wide text-chalk-50 transition-colors hover:border-chalk-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+          className="flex min-h-[76px] items-center justify-center rounded-lg border-2 border-chalk-600 px-6 py-5 text-center font-display text-xl font-black uppercase tracking-wide text-chalk-50 transition-colors hover:border-chalk-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
         >
           Create your player and play
         </Link>

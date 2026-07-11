@@ -4,7 +4,7 @@
 
 import { useMemo, useState } from "react";
 import { createPlayer, POSITIONS, POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
-import { PlayerAvatar } from "./PlayerAvatar";
+import { PixelCrest } from "./PixelCrest";
 import { KitShirt } from "./KitShirt";
 
 export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => void }) {
@@ -31,7 +31,7 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
     <section aria-label="Create your player" className="panel overflow-hidden">
       <div className="border-b border-pitch-700 px-5 py-4">
         <p className="label">Contract on the table</p>
-        <h2 className="display-condensed mt-1 font-display text-2xl font-black uppercase tracking-tight text-chalk-50">
+        <h2 className="mt-1 font-display text-2xl font-black uppercase tracking-tight text-chalk-50">
           Signing day
         </h2>
         <p className="mt-1 text-sm text-chalk-400">
@@ -44,7 +44,7 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
         <div className="flex items-center gap-4">
           <KitShirt name={previewName} shirtNumber={shirtNumber} size={88} className="shrink-0" />
           <div className="flex min-w-0 flex-col gap-1.5">
-            <PlayerAvatar name={previewName} shirtNumber={shirtNumber} size={28} />
+            <PixelCrest seed={`${previewName}-${shirtNumber}`} number={shirtNumber} size={28} />
             <p className="whisper">
               Your kit and crest. Both follow from your name and number; there
               is no changing room mirror.
@@ -66,7 +66,7 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
             onChange={(e) => setName(e.target.value)}
             placeholder="Twenty characters, tops"
             aria-describedby="player-name-permanent"
-            className="min-h-[44px] rounded-md border border-pitch-600 bg-pitch-900 px-3 py-2 text-base text-chalk-50 placeholder:text-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+            className="hero-number min-h-[44px] rounded-md border border-pitch-600 bg-pitch-950 px-3 py-2 text-[22px] uppercase tracking-[0.03em] text-chalk-50 placeholder:text-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
           />
           <p id="player-name-permanent" className="text-xs text-chalk-400">
             Choose carefully. This name is permanent.
@@ -87,7 +87,7 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
               inputMode="numeric"
               value={shirtNumber}
               onChange={(e) => setShirtNumber(Number(e.target.value))}
-              className="min-h-[44px] rounded-md border border-pitch-600 bg-pitch-900 px-3 py-2 text-base tabular-nums text-chalk-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+              className="hero-number min-h-[44px] rounded-md border border-volt/40 bg-pitch-950 px-3 py-2 text-center text-2xl text-volt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -98,7 +98,7 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
               id="player-position"
               value={position}
               onChange={(e) => setPosition(e.target.value as Position)}
-              className="min-h-[44px] rounded-md border border-pitch-600 bg-pitch-900 px-3 py-2 text-base text-chalk-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+              className="min-h-[44px] rounded-md border border-pitch-600 bg-pitch-900 px-3 py-2 text-base text-chalk-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
             >
               {POSITIONS.map((p) => (
                 <option key={p} value={p}>
