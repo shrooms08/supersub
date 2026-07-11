@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 import { createPlayer, POSITIONS, POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
 import { PlayerAvatar } from "./PlayerAvatar";
+import { KitShirt } from "./KitShirt";
 
 export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => void }) {
   const [name, setName] = useState("");
@@ -27,12 +28,10 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
   };
 
   return (
-    <section
-      aria-label="Create your player"
-      className="rounded-lg border border-pitch-600 bg-pitch-850"
-    >
+    <section aria-label="Create your player" className="panel overflow-hidden">
       <div className="border-b border-pitch-700 px-5 py-4">
-        <h2 className="font-display text-xl font-black uppercase tracking-tight text-chalk-50">
+        <p className="label">Contract on the table</p>
+        <h2 className="display-condensed mt-1 font-display text-2xl font-black uppercase tracking-tight text-chalk-50">
           Signing day
         </h2>
         <p className="mt-1 text-sm text-chalk-400">
@@ -43,11 +42,14 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
 
       <form onSubmit={submit} className="flex flex-col gap-4 px-5 py-4">
         <div className="flex items-center gap-4">
-          <PlayerAvatar name={previewName} shirtNumber={shirtNumber} size={64} />
-          <p className="whisper">
-            Your crest. It follows from your name and number; there is no
-            changing room mirror.
-          </p>
+          <KitShirt name={previewName} shirtNumber={shirtNumber} size={88} className="shrink-0" />
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <PlayerAvatar name={previewName} shirtNumber={shirtNumber} size={28} />
+            <p className="whisper">
+              Your kit and crest. Both follow from your name and number; there
+              is no changing room mirror.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-col gap-1.5">

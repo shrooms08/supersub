@@ -22,6 +22,8 @@ export interface EntryMark {
   ts: number;
   prob: number;
   minute: number;
+  // Worn on the marker tag; the anonymous kit is the product's face.
+  shirtNumber?: number;
 }
 
 export function WinProbChart({
@@ -125,7 +127,15 @@ export function WinProbChart({
           />
         ))}
 
-        {areaD && <path d={areaD} fill="rgba(214, 255, 63, 0.07)" />}
+        {/* Area fill fading to transparent below the line */}
+        <defs>
+          <linearGradient id="prob-area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(214, 255, 63, 0.22)" />
+            <stop offset="55%" stopColor="rgba(214, 255, 63, 0.06)" />
+            <stop offset="100%" stopColor="rgba(214, 255, 63, 0)" />
+          </linearGradient>
+        </defs>
+        {areaD && <path d={areaD} fill="url(#prob-area)" />}
 
         {segments.map((s, i) => (
           <path
@@ -208,9 +218,12 @@ export function WinProbChart({
         ))}
         {entry && entry.ts >= x0 && (
           <span
-            className="absolute top-1 -translate-x-1/2 rounded-sm bg-pitch-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-volt"
+            className="absolute top-1 flex -translate-x-1/2 items-center gap-1 rounded-sm border border-volt/40 bg-pitch-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-volt"
             style={{ left: `${(Math.max(0, Math.min(W, xFor(entry.ts))) / W) * 100}%` }}
           >
+            {entry.shirtNumber !== undefined && (
+              <span className="hero-number text-xs leading-none">{entry.shirtNumber}</span>
+            )}
             On {entry.minute}&apos;
           </span>
         )}

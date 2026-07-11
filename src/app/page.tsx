@@ -1,17 +1,22 @@
 "use client";
 
-// The Bench: the player chip up top, today's and upcoming fixtures as
-// cards. First visit runs signing day; there is no bench without a player.
+// The Bench: the matchday hub. Masthead, your kit card, the slate of
+// fixtures, the table of every player in the instance, the legendary
+// entries, and the on-chain tease. Single column on a phone, two columns
+// at desktop (kit card and table in the left rail, fixtures and legends
+// in the main channel). First visit runs signing day.
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { PhaseBadge } from "@/components/PhaseBadge";
-import { PlayerChip } from "@/components/PlayerChip";
+import { Masthead } from "@/components/Masthead";
+import { PlayerCard } from "@/components/PlayerCard";
+import { FixtureCard } from "@/components/FixtureCard";
+import { TheTable } from "@/components/TheTable";
+import { LegendaryEntries } from "@/components/LegendaryEntries";
 import { SigningForm } from "@/components/SigningForm";
-import { fmtKickoffUtc, fmtPoints } from "@/lib/format";
 import { fetchPlayerSummary, type PlayerSummary } from "@/lib/player";
 import type { FixtureListing } from "@/lib/sources/types";
+import type { MatchdayPayload } from "@/app/api/matchday/route";
 
 interface FixturesResponse {
   mode: "replay" | "live";
@@ -28,15 +33,22 @@ function BenchInner() {
   const [data, setData] = useState<FixturesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PlayerSummary | null>(null);
+  const [matchday, setMatchday] = useState<MatchdayPayload | null>(null);
+
+  const loadIdentity = async () => {
+    const [s, m] = await Promise.all([
+      fetchPlayerSummary(),
+      fetch("/api/matchday", { cache: "no-store" })
+        .then((r) => (r.ok ? (r.json() as Promise<MatchdayPayload>) : null))
+        .catch(() => null),
+    ]);
+    setSummary(s);
+    setMatchday(m);
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    fetchPlayerSummary().then((s) => {
-      if (!cancelled) setSummary(s);
-    });
-    return () => {
-      cancelled = true;
-    };
+    void loadIdentity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -75,132 +87,131 @@ function BenchInner() {
   };
 
   const player = summary?.player ?? null;
+  const liveNow = (data?.fixtures ?? []).some((f) => f.phase === "live");
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-6 px-4 py-8">
-      <header className="flex flex-col gap-4">
-        {player && summary && (
-          <div className="flex items-start justify-between gap-3">
-            <PlayerChip
-              player={player}
-              appearances={summary.appearances}
-              impactRating={summary.impactRating}
-            />
+    <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col gap-5 px-4 py-6 lg:max-w-5xl">
+      <Masthead liveNow={liveNow} dateMs={Date.now()} />
+      {data && !clean && <p className="whisper -mt-3">Feed: {data.mode} mode</p>}
+
+      {!summary && (
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
+          <div className="panel-quiet h-56 animate-pulse" />
+          <div className="flex flex-col gap-3">
+            <div className="panel-quiet h-28 animate-pulse" />
+            <div className="panel-quiet h-28 animate-pulse" />
           </div>
-        )}
-        <div className="flex flex-col gap-1">
-          <h1 className="font-display text-3xl font-black uppercase tracking-tight text-chalk-50">
-            Super Sub
-          </h1>
-          <p className="text-sm text-chalk-400">
-            You are the substitute. Pick your moment, enter the pitch, and everything
-            after the board goes up is yours.
-          </p>
-          {data && !clean && <p className="whisper mt-1">Feed: {data.mode} mode</p>}
         </div>
-      </header>
+      )}
 
       {summary && !player && (
-        <SigningForm
-          onSigned={(p) =>
-            setSummary({ player: p, appearances: 0, impactRating: null, played: {} })
-          }
-        />
+        <div className="mx-auto w-full max-w-2xl">
+          <SigningForm
+            onSigned={(p) => {
+              setSummary({ player: p, appearances: 0, impactRating: null, played: {} });
+              void loadIdentity();
+            }}
+          />
+        </div>
       )}
 
       {player && (
-        <section aria-label="Fixtures" className="flex flex-col gap-3">
-          {!data && !error && (
-            <>
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-24 animate-pulse rounded-lg border border-pitch-700 bg-pitch-850"
+        <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
+          {/* Left rail on desktop; interleaved by order on mobile */}
+          <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-5">
+            <div className="order-1 lg:order-none">
+              <PlayerCard
+                player={player}
+                appearances={summary?.appearances ?? 0}
+                impactRating={summary?.impactRating ?? null}
+                form={matchday?.you?.form ?? []}
+                nextBadge={matchday?.you?.nextBadge ?? null}
+              />
+            </div>
+            <div className="order-3 lg:order-none">
+              <TheTable rows={matchday?.table ?? []} />
+            </div>
+          </div>
+
+          <div className="contents lg:flex lg:min-w-0 lg:flex-col lg:gap-5">
+            <section aria-label="The slate" className="order-2 flex flex-col gap-3 lg:order-none">
+              <div className="flex items-baseline justify-between">
+                <h2 className="label">The slate</h2>
+                <p className="whisper">
+                  {data ? `${data.fixtures.length} fixture${data.fixtures.length === 1 ? "" : "s"} listed` : "Checking the board"}
+                </p>
+              </div>
+
+              {!data && !error && (
+                <>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="panel-quiet h-28 animate-pulse" />
+                  ))}
+                </>
+              )}
+
+              {error && (
+                <div className="panel p-4">
+                  <p className="font-display text-sm font-black uppercase tracking-wide text-chalk-100">
+                    The feed is down
+                  </p>
+                  <p className="mt-1 text-sm text-chalk-400">{error}</p>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className="mt-3 min-h-[44px] rounded-md border border-chalk-600 px-3 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                  >
+                    Raise the fourth official
+                  </button>
+                </div>
+              )}
+
+              {data && data.fixtures.length === 0 && (
+                <div className="panel-quiet px-4 py-6 text-center">
+                  <p className="font-display text-sm font-black uppercase tracking-wide text-chalk-300">
+                    Empty tunnel
+                  </p>
+                  <p className="mt-1.5 text-sm text-chalk-400">
+                    Nothing on the slate right now.
+                  </p>
+                  <p className="whisper mt-1.5">
+                    {data.mode === "live"
+                      ? "Team news lands closer to kickoff."
+                      : "Add a replay bundle under data/replay and it appears here."}
+                  </p>
+                </div>
+              )}
+
+              {data?.fixtures.map((listing) => (
+                <FixtureCard
+                  key={listing.fixture.fixtureId}
+                  listing={listing}
+                  result={matchday?.you?.results[listing.fixture.fixtureId] ?? null}
+                  href={matchHref(listing.fixture.fixtureId)}
                 />
               ))}
-            </>
-          )}
+            </section>
 
-          {error && (
-            <div className="rounded-lg border border-pitch-600 bg-pitch-850 p-4">
-              <p className="text-sm text-chalk-300">The feed is down: {error}</p>
-              <button
-                type="button"
-                onClick={() => window.location.reload()}
-                className="mt-3 rounded-md border border-chalk-600 px-3 py-2 text-sm font-semibold text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-              >
-                Try again
-              </button>
+            <div className="order-4 lg:order-none">
+              <LegendaryEntries rows={matchday?.legendary ?? []} />
             </div>
-          )}
-
-          {data && data.fixtures.length === 0 && (
-            <div className="rounded-lg border border-pitch-700 bg-pitch-850 p-6 text-center">
-              <p className="text-sm text-chalk-300">Nothing on the fixture list right now.</p>
-              <p className="whisper mt-2">
-                {data.mode === "live"
-                  ? "Check back closer to kickoff."
-                  : "Add a replay bundle under data/replay to warm up."}
-              </p>
-            </div>
-          )}
-
-          {data?.fixtures.map(({ fixture, phase, mode: fxMode }) => {
-            const playable = phase === "live" || fxMode === "replay";
-            const points = summary?.played[fixture.fixtureId];
-            const played = points !== undefined;
-            const inner = (
-              <div className="flex items-center justify-between gap-4 p-4">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <p className="truncate text-lg font-bold text-chalk-50">
-                    {fixture.participant1}
-                    <span className="px-2 font-normal text-chalk-500">v</span>
-                    {fixture.participant2}
-                  </p>
-                  <p className="whisper">
-                    {fixture.competition || "Football"} · {fmtKickoffUtc(fixture.startTime)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <PhaseBadge phase={phase} replay={fxMode === "replay"} />
-                  {played ? (
-                    <span className="rounded-sm bg-pitch-700 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] text-chalk-100">
-                      You played this · {fmtPoints(points)} pts
-                    </span>
-                  ) : (
-                    playable && (
-                      <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-chalk-300">
-                        {phase === "upcoming" && fxMode === "replay"
-                          ? "Kick it off"
-                          : phase === "finished" && fxMode === "replay"
-                            ? "Watch back"
-                            : "In the tunnel"}
-                        <span aria-hidden> &rsaquo;</span>
-                      </span>
-                    )
-                  )}
-                </div>
-              </div>
-            );
-            return playable ? (
-              <Link
-                key={fixture.fixtureId}
-                href={matchHref(fixture.fixtureId)}
-                className="rounded-lg border border-pitch-600 bg-pitch-850 transition-colors hover:border-chalk-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
-              >
-                {inner}
-              </Link>
-            ) : (
-              <div
-                key={fixture.fixtureId}
-                className="rounded-lg border border-pitch-700 bg-pitch-900 opacity-70"
-              >
-                {inner}
-              </div>
-            );
-          })}
-        </section>
+          </div>
+        </div>
       )}
+
+      <footer className="mt-1 flex flex-col items-center gap-1 border-t border-pitch-700 pb-2 pt-4 text-center sm:flex-row sm:justify-between sm:text-left">
+        <p className="text-xs text-chalk-400">
+          <span className="font-display text-[11px] font-black uppercase tracking-[0.18em] text-chalk-300">
+            Claim your legend
+          </span>
+          <span className="ml-2 rounded-sm bg-pitch-700 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-chalk-400">
+            Coming soon
+          </span>
+        </p>
+        <p className="text-xs text-chalk-500">
+          Mint your career on Solana when the tournament ends.
+        </p>
+      </footer>
     </main>
   );
 }

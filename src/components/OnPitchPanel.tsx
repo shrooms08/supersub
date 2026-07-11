@@ -25,7 +25,7 @@ export function OnPitchPanel({
   return (
     <section
       aria-label="Your shift"
-      className="relative overflow-hidden rounded-lg border border-pitch-600 bg-pitch-850"
+      className="panel relative overflow-hidden"
     >
       {varBanner && (
         <div

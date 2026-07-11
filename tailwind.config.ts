@@ -37,6 +37,7 @@ const config: Config = {
       },
       fontFamily: {
         display: [
+          "var(--font-archivo)",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -70,12 +71,23 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.25" },
         },
+        slamIn: {
+          "0%": { opacity: "0", transform: "scale(1.4)" },
+          "60%": { opacity: "1", transform: "scale(0.96)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        riseIn: {
+          "0%": { opacity: "0", transform: "translateY(10px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "pulse-once": "pulseOnce 1.4s ease-out 1",
         "cta-pulse": "ctaPulse 1.6s ease-in-out infinite",
         "var-flash": "varFlash 5s ease-out 1 forwards",
         "live-dot": "liveDot 1.4s ease-in-out infinite",
+        "slam-in": "slamIn 0.45s cubic-bezier(0.22, 1.4, 0.36, 1) 1 both",
+        "rise-in": "riseIn 0.5s ease-out 1 both",
       },
     },
   },

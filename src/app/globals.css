@@ -3,19 +3,83 @@
 @tailwind utilities;
 
 /* Dark-only by design (see brand.md). One volt accent, everything else
-   grayscale. */
+   grayscale. The atmosphere layer below keeps the base from ever reading
+   as a flat black void: floodlight wash, mowing stripes, grain, vignette,
+   all CSS gradients and one tiny inline SVG, no image assets. */
 
 :root {
   color-scheme: dark;
 }
 
 body {
-  @apply bg-pitch-950 text-chalk-100 antialiased;
+  @apply text-chalk-100 antialiased;
+  background-color: #070708;
+  background-image:
+    /* vignette: darker frame, light falls off toward the touchlines */
+    radial-gradient(ellipse 130% 100% at 50% 28%, transparent 52%, rgba(0, 0, 0, 0.5) 100%),
+    /* grain */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E"),
+    /* mown pitch stripes, one shade apart */
+    repeating-linear-gradient(
+      90deg,
+      rgba(245, 245, 242, 0.012) 0px,
+      rgba(245, 245, 242, 0.012) 110px,
+      transparent 110px,
+      transparent 220px
+    ),
+    /* floodlight wash from high behind the main stand */
+    radial-gradient(ellipse 110% 70% at 50% -12%, rgba(214, 255, 63, 0.045), transparent 55%),
+    radial-gradient(ellipse 120% 90% at 50% 115%, #0b0b0d, #070708 65%);
+  background-attachment: fixed;
 }
 
-/* Hero numbers: the multiplier, the win probability, final points. */
+@layer components {
+  /* Elevated card: 1px border, inner hairline highlight, resting shadow. */
+  .panel {
+    @apply relative rounded-lg border border-pitch-600 bg-pitch-850;
+    box-shadow:
+      inset 0 1px 0 rgba(245, 245, 242, 0.05),
+      0 1px 2px rgba(0, 0, 0, 0.6),
+      0 8px 24px -18px rgba(0, 0, 0, 0.9);
+  }
+  .panel-quiet {
+    @apply relative rounded-lg border border-pitch-700 bg-pitch-900;
+    box-shadow:
+      inset 0 1px 0 rgba(245, 245, 242, 0.03),
+      0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  /* Interactive card: soft outer glow when hovered or focused. */
+  .panel-hover {
+    @apply transition-[border-color,box-shadow] duration-200;
+  }
+  .panel-hover:hover,
+  .panel-hover:focus-visible {
+    @apply border-chalk-600;
+    box-shadow:
+      inset 0 1px 0 rgba(245, 245, 242, 0.06),
+      0 1px 2px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(245, 245, 242, 0.05),
+      0 6px 32px -12px rgba(245, 245, 242, 0.12);
+  }
+  /* Section header label: small, uppercase, wide tracked. */
+  .label {
+    @apply text-[10px] font-bold uppercase tracking-[0.24em] text-chalk-500;
+  }
+}
+
+/* Hero numbers: the multiplier, win probability, Impact Rating, final
+   points. Condensed broadcast numerals. */
 .hero-number {
   @apply font-display font-black tracking-tight tabular-nums;
+  font-stretch: 80%;
+}
+
+/* Masthead and scoreboard set wide; team names and chips set narrow. */
+.display-expanded {
+  font-stretch: 122%;
+}
+.display-condensed {
+  font-stretch: 78%;
 }
 
 /* Whispering supporting text. */
@@ -23,16 +87,13 @@ body {
   @apply text-[11px] uppercase tracking-[0.18em] text-chalk-500;
 }
 
-/* Win probability line drawing: the curve extends by animating dashoffset
-   is overkill for streaming data; we animate opacity + the live dot via
-   CSS and let the path re-render. Non-essential motion respects reduced
-   motion below. */
-
 @media (prefers-reduced-motion: reduce) {
   .animate-pulse-once,
   .animate-cta-pulse,
   .animate-var-flash,
-  .animate-live-dot {
+  .animate-live-dot,
+  .animate-slam-in,
+  .animate-rise-in {
     animation: none !important;
   }
   * {

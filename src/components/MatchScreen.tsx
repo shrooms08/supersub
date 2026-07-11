@@ -15,7 +15,7 @@ import { fetchPlayerSummary, type PlayerRow } from "@/lib/player";
 import { fmtMultiplier, fmtPct } from "@/lib/format";
 import { tierForMultiplier } from "@/lib/config/scoring";
 import { probAt, teamProb } from "@/lib/state/winprob";
-import { multiplierForProb, scoreWindow } from "@/lib/state/scoring";
+import { finalPoints, multiplierForProb, scoreWindow } from "@/lib/state/scoring";
 import { Scoreboard } from "./Scoreboard";
 import { WinProbChart } from "./WinProbChart";
 import { EventTicker } from "./EventTicker";
@@ -242,9 +242,33 @@ export function MatchScreen({
         </p>
       )}
 
+      {/* Your shift, pinned while you scroll. The window never leaves the
+          frame while the match is live. */}
+      {entry && provisional && phase === "live" && (
+        <div
+          role="status"
+          className="sticky top-2 z-40 flex items-center justify-between gap-3 rounded-md border border-pitch-500 bg-pitch-900/95 px-3 py-2 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.9)] backdrop-blur-sm"
+        >
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="hero-number text-lg leading-none text-chalk-50">
+              {player?.shirt_number ?? entry.team}
+            </span>
+            <span className="truncate text-[11px] font-bold uppercase tracking-[0.14em] text-chalk-300">
+              On {entry.entry_minute}&apos; · was {fmtPct(entry.win_prob_at_entry)}%
+            </span>
+          </span>
+          <span className="shrink-0 text-right">
+            <span className="hero-number text-2xl leading-none text-volt">
+              {finalPoints(provisional.windowPoints, entry.multiplier)}
+            </span>
+            <span className="whisper ml-1.5">Provisional</span>
+          </span>
+        </div>
+      )}
+
       <Scoreboard fixture={fixture} state={state} feedNow={feedNow} replay={meta.mode === "replay"} />
 
-      <section aria-label="Win probability" className="rounded-lg border border-pitch-600 bg-pitch-850 p-4">
+      <section aria-label="Win probability" className="panel p-4">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="whisper">
@@ -284,6 +308,7 @@ export function MatchScreen({
                     ts: entry.entry_feed_ts,
                     prob: entry.win_prob_at_entry,
                     minute: entry.entry_minute,
+                    shirtNumber: player?.shirt_number,
                   }
                 : null
             }
@@ -295,7 +320,7 @@ export function MatchScreen({
       </section>
 
       {playerLoaded && !player && phase !== "finished" && (
-        <section className="rounded-lg border border-pitch-600 bg-pitch-850 p-5 text-center">
+        <section className="panel p-5 text-center">
           <p className="text-sm text-chalk-300">
             You can watch from the stands, but the pitch is for contracted players.
           </p>
@@ -309,7 +334,7 @@ export function MatchScreen({
       )}
 
       {player && entryLoaded && !entry && (
-        <section aria-label="Enter the pitch" className="flex flex-col gap-4 rounded-lg border border-pitch-600 bg-pitch-850 p-4">
+        <section aria-label="Enter the pitch" className="panel flex flex-col gap-4 p-4">
           <p className="text-sm text-chalk-300">
             You are on the bench, {player.name}. Pick your side, pick your moment. The worse it
             looks when you step on, the bigger the multiplier you carry.
@@ -349,7 +374,7 @@ export function MatchScreen({
       )}
 
       {phase === "finished" && entryLoaded && !entry && (
-        <section className="rounded-lg border border-pitch-600 bg-pitch-850 p-6 text-center">
+        <section className="panel p-6 text-center">
           <p className="font-display text-xl font-black uppercase tracking-widest text-chalk-50">
             Full time
           </p>

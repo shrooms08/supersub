@@ -10,6 +10,8 @@ import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { fmtMultiplier, fmtPoints } from "@/lib/format";
 import { tierForMultiplier } from "@/lib/config/scoring";
 import { POSITION_LABELS, type PlayerRow, type Position } from "@/lib/player";
+import { FormChips } from "@/components/FormChips";
+import { KitShirt } from "@/components/KitShirt";
 import type { CareerRecord } from "@/lib/career/stats";
 import type { EntryRow } from "@/lib/entry";
 
@@ -27,24 +29,24 @@ interface CareerPayload {
   history: EntryRow[];
 }
 
-function FormChips({ form }: { form: CareerRecord["form"] }) {
-  if (form.length === 0) return <span className="text-sm text-chalk-500">No windows yet</span>;
+// Multiplier tier as a tag. Grayscale ladder by boldness of the take;
+// Miracle Territory alone earns the dimmed volt, as close to a hero
+// number as a chip gets.
+function TierTag({ multiplier }: { multiplier: number }) {
+  const tier = tierForMultiplier(multiplier).name;
+  const look =
+    tier === "Miracle Territory"
+      ? "border-volt-dim/60 text-volt-dim"
+      : tier === "The Gamble"
+        ? "border-chalk-400 text-chalk-100"
+        : tier === "Squad Rotation"
+          ? "border-chalk-600 text-chalk-300"
+          : "border-pitch-500 text-chalk-500";
   return (
-    <span className="flex gap-1.5" aria-label={`Form, most recent first: ${form.join(", ")}`}>
-      {form.map((r, i) => (
-        <span
-          key={i}
-          className={`flex h-7 w-7 items-center justify-center rounded-sm text-xs font-black ${
-            r === "W"
-              ? "bg-chalk-100 text-pitch-950"
-              : r === "D"
-                ? "bg-pitch-600 text-chalk-100"
-                : "bg-pitch-800 text-chalk-500 border border-pitch-600"
-          }`}
-        >
-          {r}
-        </span>
-      ))}
+    <span
+      className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] ${look}`}
+    >
+      {tier} {fmtMultiplier(multiplier)}
     </span>
   );
 }
@@ -108,32 +110,36 @@ export default function CareerPage() {
       </header>
 
       {/* Hero: identity + Impact Rating */}
-      <section
-        aria-label="Player"
-        className="flex items-center justify-between gap-4 rounded-lg border border-pitch-600 bg-pitch-850 p-5"
-      >
-        <div className="flex min-w-0 items-center gap-4">
-          <PlayerAvatar name={player.name} shirtNumber={player.shirt_number} size={72} />
-          <div className="min-w-0">
-            <h1 className="truncate font-display text-2xl font-black uppercase tracking-tight text-chalk-50">
-              {player.name}
-            </h1>
-            <p className="mt-0.5 text-sm text-chalk-400">
-              #{player.shirt_number} · {POSITION_LABELS[player.position as Position]}
-            </p>
-          </div>
+      <section aria-label="Player" className="panel overflow-hidden">
+        <div className="flex items-center justify-between gap-2 border-b border-pitch-700 px-5 py-2">
+          <span className="label">Squad profile</span>
+          <PlayerAvatar name={player.name} shirtNumber={player.shirt_number} size={22} />
         </div>
-        <div className="shrink-0 text-right">
-          <p className="hero-number text-6xl leading-none text-volt sm:text-7xl">
-            {record.impactRating === null ? "--" : Math.round(record.impactRating)}
-          </p>
-          <p className="whisper mt-1">Impact rating</p>
+        <div className="flex items-center justify-between gap-4 p-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <KitShirt name={player.name} shirtNumber={player.shirt_number} size={80} className="shrink-0" />
+            <div className="min-w-0">
+              <h1 className="display-condensed truncate font-display text-2xl font-black uppercase leading-none tracking-tight text-chalk-50 sm:text-3xl">
+                {player.name}
+              </h1>
+              <p className="mt-1 text-sm text-chalk-400">
+                No. {player.shirt_number} · {POSITION_LABELS[player.position as Position]}
+              </p>
+              <p className="whisper mt-0.5 hidden sm:block">Contracted for the tournament</p>
+            </div>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="hero-number text-6xl leading-none text-volt sm:text-7xl">
+              {record.impactRating === null ? "--" : Math.round(record.impactRating)}
+            </p>
+            <p className="whisper mt-1">Impact rating</p>
+          </div>
         </div>
       </section>
 
       {/* The record */}
-      <section aria-label="The record" className="rounded-lg border border-pitch-700 bg-pitch-900">
-        <h2 className="whisper border-b border-pitch-700 px-4 py-2">The record</h2>
+      <section aria-label="The record" className="panel-quiet overflow-hidden">
+        <h2 className="label border-b border-pitch-700 px-4 py-2">The record</h2>
         <div className="grid grid-cols-2 gap-px bg-pitch-800 sm:grid-cols-4">
           {[
             { label: "Appearances", value: String(record.appearances) },
@@ -145,7 +151,7 @@ export default function CareerPage() {
             { label: "Legendary", value: String(record.legendaryCount) },
           ].map((stat) => (
             <div key={stat.label} className="bg-pitch-900 px-4 py-3">
-              <p className="font-display text-2xl font-black tabular-nums text-chalk-50">
+              <p className="hero-number text-2xl text-chalk-50">
                 {stat.value}
               </p>
               <p className="whisper mt-0.5">{stat.label}</p>
@@ -159,18 +165,22 @@ export default function CareerPage() {
       </section>
 
       {/* Badge cabinet */}
-      <section aria-label="Honours board" className="rounded-lg border border-pitch-700 bg-pitch-900">
-        <h2 className="whisper border-b border-pitch-700 px-4 py-2">The cabinet</h2>
+      <section aria-label="Honours board" className="panel-quiet overflow-hidden">
+        <h2 className="label border-b border-pitch-700 px-4 py-2">The cabinet</h2>
         <ul className="grid grid-cols-2 gap-px bg-pitch-800 sm:grid-cols-3">
           {badges.map((badge) => {
             const earned = badge.earnedAt !== null;
             return (
               <li
                 key={badge.key}
-                className={`flex flex-col gap-1 px-4 py-3 ${earned ? "bg-pitch-850" : "bg-pitch-900"}`}
+                className={`flex flex-col gap-1 px-4 py-3 ${
+                  earned
+                    ? "bg-pitch-850 shadow-[inset_0_0_0_1px_rgba(214,255,63,0.4),inset_0_0_18px_-8px_rgba(214,255,63,0.25)]"
+                    : "bg-pitch-900 shadow-[inset_0_0_0_1px_rgba(58,58,66,0.6)] opacity-80"
+                }`}
               >
                 <p
-                  className={`font-display text-sm font-black uppercase tracking-wide ${
+                  className={`display-condensed font-display text-sm font-black uppercase tracking-wide ${
                     earned ? "text-chalk-50" : "text-chalk-600"
                   }`}
                 >
@@ -186,12 +196,16 @@ export default function CareerPage() {
       </section>
 
       {/* Match history */}
-      <section aria-label="Match history" className="rounded-lg border border-pitch-700 bg-pitch-900">
-        <h2 className="whisper border-b border-pitch-700 px-4 py-2">As it was written</h2>
+      <section aria-label="Match history" className="panel-quiet overflow-hidden">
+        <h2 className="label border-b border-pitch-700 px-4 py-2">As it was written</h2>
         {history.length === 0 ? (
-          <p className="px-4 py-6 text-center text-sm text-chalk-500">
-            No appearances in the book yet. Get off the bench.
-          </p>
+          <div className="px-4 py-6 text-center">
+            <p className="font-display text-sm font-black uppercase tracking-wide text-chalk-300">
+              The book is open at page one
+            </p>
+            <p className="mt-1.5 text-sm text-chalk-400">No appearances written yet.</p>
+            <p className="whisper mt-1">Get off the bench; the Gazette is waiting.</p>
+          </div>
         ) : (
           <ul className="divide-y divide-pitch-800">
             {history.map((entry) => (
@@ -205,11 +219,12 @@ export default function CareerPage() {
                       {entry.team_name} {entry.final_score_team} - {entry.final_score_opp}{" "}
                       {entry.opponent_name}
                     </p>
-                    <p className="whisper mt-0.5">
-                      On {entry.entry_minute}&apos; · {tierForMultiplier(entry.multiplier).name}
+                    <p className="mt-1 flex items-center gap-1.5">
+                      <span className="whisper">On {entry.entry_minute}&apos;</span>
+                      <TierTag multiplier={entry.multiplier} />
                     </p>
                   </div>
-                  <p className="shrink-0 font-display text-xl font-black tabular-nums text-chalk-50">
+                  <p className="hero-number shrink-0 text-xl text-chalk-50">
                     {fmtPoints(entry.final_points ?? 0)}
                     <span aria-hidden className="ml-2 font-normal text-chalk-600">&rsaquo;</span>
                   </p>
