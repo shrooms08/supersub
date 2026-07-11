@@ -17,7 +17,7 @@ import { tierForMultiplier } from "@/lib/config/scoring";
 import { probAt, teamProb } from "@/lib/state/winprob";
 import { stateMinute } from "@/lib/state/fold";
 import { finalPoints, multiplierForProb, scoreWindow } from "@/lib/state/scoring";
-import { Scoreboard } from "./Scoreboard";
+import { Scoreboard, shootoutNote } from "./Scoreboard";
 import { WinProbChart } from "./WinProbChart";
 import { EventTicker } from "./EventTicker";
 import { TeamPicker } from "./TeamPicker";
@@ -52,7 +52,7 @@ export function MatchScreen({
   });
 
   const stream = useMatchStream(fixtureId, { mode, speed, anchor });
-  const { meta, state, probSeries, feedNow } = stream;
+  const { meta, state, scoringState, probSeries, feedNow } = stream;
 
   const [player, setPlayer] = useState<PlayerRow | null>(null);
   const [playerLoaded, setPlayerLoaded] = useState(false);
@@ -132,7 +132,9 @@ export function MatchScreen({
   // Provisional scoring while on the pitch; the same pure function the
   // server uses at resolution, so a VAR overturn rolls it back on its own.
   const provisional = useMemo(() => {
-    if (!entry || !state) return null;
+    if (!entry || !scoringState) return null;
+    // Scored against the regulation fold: windows settle at the
+    // regulation whistle, so extra time never moves this number.
     return scoreWindow(
       {
         team: entry.team,
@@ -140,10 +142,10 @@ export function MatchScreen({
         scoreTeamAtEntry: entry.score_team_at_entry,
         scoreOppAtEntry: entry.score_opp_at_entry,
       },
-      state,
+      scoringState,
       { settled: phase === "finished" }
     );
-  }, [entry, state, phase]);
+  }, [entry, scoringState, phase]);
 
   // VAR watch: a goal id flipping to discarded triggers the overturn
   // banner once.
@@ -393,6 +395,8 @@ export function MatchScreen({
           resolving={resolving || (!entry.resolved_at && !resolveError)}
           error={resolveError}
           onRetry={() => void resolve()}
+          knockout={Boolean(state?.wentToExtraTime || state?.shootout)}
+          resultNote={shootoutNote(state?.shootout ?? null, fixture.participant1, fixture.participant2)}
         />
       )}
 

@@ -64,12 +64,20 @@ export function ResolutionOverlay({
   resolving,
   error,
   onRetry,
+  knockout = false,
+  resultNote = null,
 }: {
   entry: EntryRow | null;
   newBadges: string[];
   resolving: boolean;
   error: string | null;
   onRetry: () => void;
+  // True when the match went past regulation (extra time or penalties):
+  // shows the settlement rule under the result. Display only.
+  knockout?: boolean;
+  // Shootout verdict for the clipping subline, e.g. "SUI advanced on
+  // penalties 4-3". Display only; scoring settled at regulation.
+  resultNote?: string | null;
 }) {
   const earned = newBadges
     .map((key) => BADGES.find((b) => b.key === key))
@@ -175,6 +183,11 @@ export function ResolutionOverlay({
                   Entered {entry.entry_minute}&apos; at {fmtPct(entry.win_prob_at_entry)}% ·{" "}
                   {goalsBanked} goal{goalsBanked === 1 ? "" : "s"} banked after entry
                 </p>
+                {(knockout || resultNote) && (
+                  <p className="mt-1.5 text-center font-label text-[9px] font-semibold uppercase tracking-[0.1em] leading-[1.4] text-chalk-500 lg:text-[10px] lg:tracking-[0.14em]">
+                    {resultNote ? `${resultNote} · ` : ""}Windows settle at the regulation whistle
+                  </p>
+                )}
 
                 {/* The window, line by line (real breakdown, kept) */}
                 <ul className="mt-3 divide-y divide-white/5 border-t border-white/[0.07]">
@@ -285,7 +298,7 @@ export function ResolutionOverlay({
             {/* Stage 4: the morning paper */}
             {entry.report && stage >= 4 && (
               <div className="animate-reveal-up">
-                <MatchReportCard entry={entry} />
+                <MatchReportCard entry={entry} resultNote={resultNote} />
               </div>
             )}
           </>

@@ -96,6 +96,19 @@ export interface MatchState {
   additionalTimeMinutes: number | null;
   score: { p1: number; p2: number };
   counters: { p1: TeamCounters; p2: TeamCounters };
+  // Knockout handling. The scoring window is REGULATION ONLY (the 1X2
+  // odds that set the multiplier price regulation time, so outcomes must
+  // settle in the same event space). regulationEndTs/Seq mark the first
+  // status event at or past the full-time whistle (StatusId 5 in a
+  // regulation finish, 6 when extra time follows, 7/9 as a fallback if
+  // the boundary status was missed; the ET kickoff IS the regulation
+  // end). Null while regulation is still being played, or when the log
+  // never reached the whistle.
+  regulationEndTs: number | null;
+  regulationEndSeq: number | null;
+  wentToExtraTime: boolean;
+  // Shootout tally for display only; never touches score or windows.
+  shootout: { p1: number; p2: number } | null;
   // Net-of-discards countable events, ordered by seq. Goals in here are the
   // basis for window scoring; a VAR-erased goal stays present with
   // discarded=true so the UI can show the overturn.
@@ -181,6 +194,10 @@ export function foldMatch(
   let kickoffTs: number | null = null;
   let sawGameFinalised = false;
   let sawStatus5 = false;
+  let regulationEndTs: number | null = null;
+  let regulationEndSeq: number | null = null;
+  let wentToExtraTime = false;
+  let shootout: { p1: number; p2: number } | null = null;
   let statusId: number | undefined;
   let clock: MatchState["clock"] = null;
   let additionalTimeMinutes: number | null = null;
@@ -199,13 +216,29 @@ export function foldMatch(
     // present (already zero-filled by the normalization layer).
     if (e.score?.p1) baselines.p1 = { totals: e.score.p1, seq: e.seq };
     if (e.score?.p2) baselines.p2 = { totals: e.score.p2, seq: e.seq };
+    if (e.shootoutScore) shootout = e.shootoutScore;
+
+    // Regulation boundary, read off EVERY event's StatusId so a
+    // mid-match join that never received the boundary status event still
+    // caps at the first event stamped past the whistle. Observed flow:
+    // 2 first half, 3 halftime, 4 second half, then 5 (full-time
+    // whistle, regulation finish) or, in the knockout log 18202783, 6
+    // (extra time coming), 7/8/9 (ET1, break, ET2), 11/12/13 (shootout
+    // phases). The FIRST StatusId at or past 5 marks the regulation
+    // whistle.
+    const sid = e.statusId ?? (e.data?.statusId as number | undefined);
+    if (sid !== undefined && sid >= 5 && regulationEndSeq === null) {
+      regulationEndTs = e.ts;
+      regulationEndSeq = e.seq;
+    }
+    if (sid !== undefined && sid >= 6 && sid <= 9) wentToExtraTime = true;
 
     switch (e.action) {
       case "kickoff":
         if (kickoffTs === null) kickoffTs = e.ts;
         break;
       case "status":
-        if (e.statusId === 5 || e.data?.statusId === 5) sawStatus5 = true;
+        if (sid === 5) sawStatus5 = true;
         // A period change retires the previous period's added time board.
         additionalTimeMinutes = null;
         break;
@@ -323,12 +356,34 @@ export function foldMatch(
     additionalTimeMinutes,
     score: { p1: counters.p1.goals, p2: counters.p2.goals },
     counters,
+    regulationEndTs,
+    regulationEndSeq,
+    wentToExtraTime,
+    shootout,
     countables: [...countablesById.values()].sort((a, b) => a.seq - b.seq),
     ticker: ticker.sort((a, b) => a.seq - b.seq),
     lastEventTs,
     startTime,
     eventCount: ordered.length,
   };
+}
+
+// The regulation-only event log: everything up to and including the
+// first event stamped at or past the full-time whistle (StatusId >= 5).
+// Scoring folds THIS, never the full log, so extra-time goals and
+// shootout kicks can never reach a window: the 1X2 odds that set the
+// multiplier price regulation time, and outcomes must settle in the
+// same event space. A log that never reaches the whistle passes through
+// whole (the boundary does not exist yet). Display keeps folding the
+// full log; only scoring is capped.
+export function regulationLog(events: MatchEvent[]): MatchEvent[] {
+  const ordered = [...events].sort((a, b) => a.seq - b.seq || a.ts - b.ts);
+  for (let i = 0; i < ordered.length; i++) {
+    const e = ordered[i];
+    const sid = e.statusId ?? (e.data?.statusId as number | undefined);
+    if (sid !== undefined && sid >= 5) return ordered.slice(0, i + 1);
+  }
+  return ordered;
 }
 
 // Phase for a fixture we have no event log for (the Bench list). Derived

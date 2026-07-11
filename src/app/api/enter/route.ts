@@ -72,7 +72,10 @@ export async function POST(req: NextRequest) {
     const log = await source.getLog(fixtureId!, entryFeedTs);
     const state = foldMatch(log.events, { feedNow: entryFeedTs });
 
-    if (state.phase !== "live") {
+    // Windows settle at the regulation whistle, so the bench closes there
+    // too: extra time and shootouts are outside the scoring event space,
+    // and an entry made during them could never earn a point.
+    if (state.phase !== "live" || state.regulationEndTs !== null) {
       return NextResponse.json(
         { error: state.phase === "upcoming" ? "The whistle has not gone yet." : "Full time. The bench is closed." },
         { status: 409 }

@@ -11,7 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSource } from "@/lib/sources";
-import { foldMatch } from "@/lib/state/fold";
+import { foldMatch, regulationLog } from "@/lib/state/fold";
 import { finalPoints, scoreWindow } from "@/lib/state/scoring";
 import { supabase } from "@/lib/server/supabase";
 import { currentPlayer } from "@/lib/server/playerAuth";
@@ -80,6 +80,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Windows settle at the REGULATION whistle: extra-time goals and
+    // shootout kicks live outside the 1X2 event space that priced the
+    // multiplier, so the window is scored against the regulation fold.
+    // For a match that never went past 90 the two folds are identical.
+    const regulationState = foldMatch(regulationLog(log.events), { feedNow });
+
     const window = scoreWindow(
       {
         team: entry.team,
@@ -87,7 +93,7 @@ export async function POST(req: NextRequest) {
         scoreTeamAtEntry: entry.score_team_at_entry,
         scoreOppAtEntry: entry.score_opp_at_entry,
       },
-      finalState,
+      regulationState,
       { settled: true }
     );
     const points = finalPoints(window.windowPoints, entry.multiplier);

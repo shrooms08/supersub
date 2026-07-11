@@ -222,3 +222,112 @@ Identical to the bundled log's ending. The bundle is not stale.
 - `scripts/audit-fixture-goals.ts` (new: raw goal-history audit table)
 - `scripts/recompute-entries.ts` (new: dry-run-first entry recompute)
 - `DEMO.md` (Scenario C beats corrected), `SMOKE3.md` (correction note)
+
+## 7. Knockout handling (extra time and penalties)
+
+Captured 2026-07-11, extending the audit to the knockout event space.
+
+### 7a. What the Switzerland v Colombia log (18202783) contains
+
+`npx tsx scripts/audit-knockout-periods.ts 18202783`. The bundled log
+runs the full knockout distance: 1355 raw events, 380 of them past
+90:00. Period boundaries by StatusId:
+
+```
+Seq   16 | status 2   first half          Seq  963 | status 6   extra time coming
+Seq  479 | status 4   second half         Seq  966 | status 7   ET1 (kickoff at 90:00)
+                                          Seq 1135 | status 8   ET break
+                                          Seq 1138 | status 9   ET2 (kickoff at 105:00)
+                                          Seq 1298 | status 11  ET over
+                                          Seq 1301 | status 12  shootout
+                                          Seq 1349 | status 13  shootout done
+                                          Seq 1352 | game_finalised (StatusId 100)
+```
+
+There is NO StatusId 5 in this log: a match that goes to extra time
+ends regulation with status 6, not 5. The shootout arrives as
+`penalty_shootout_team` and `penalty_outcome` actions (Data.Outcome
+"Scored"/"Missed") with a running tally inside the Score map's PE
+period, ending `PE: {Goals: 4}` v `PE: {Goals: 3}` (Switzerland win
+4-3 on penalties). PE is deliberately excluded from the feed's Total;
+extra time is NOT (this log's yellow cards prove it: H2 2 + ET1 1 =
+Total 3). The log has zero `goal` actions, so no real ET goal exists
+in any bundle.
+
+### 7b. The fold WOULD have counted an ET goal; fixed
+
+Ruling: REGULATION ONLY. The 1X2 odds that set the multiplier price
+regulation time, so outcomes must settle in the same event space.
+
+Before the fix, `scoreWindow` filtered window goals only by
+`ts > entryFeedTs` and read win/draw from the full fold's score, whose
+baselines come from feed Totals that include extra time. An ET goal
+(arriving like any goal: a `goal` action plus a refreshed Score map)
+would have scored the window and flipped the win bonus.
+
+The fix:
+
+- `foldMatch` now tracks `regulationEndTs`/`regulationEndSeq` (the
+  first event stamped StatusId >= 5, read off every event so a
+  mid-match join that missed the boundary status still caps),
+  `wentToExtraTime` (StatusId 6 to 9 seen), and `shootout` (the PE
+  tally, display only).
+- New `regulationLog(events)` returns the log up to and including the
+  regulation whistle. Scoring folds THIS: `POST /api/resolve` scores
+  the window against `foldMatch(regulationLog(events))`, and the
+  client provisional does the same via `useMatchStream`'s new
+  `scoringState`. Display keeps folding the full log.
+- Second fence: `scoreWindow` also drops window items past
+  `state.regulationEndTs`, so even a full-log fold cannot leak an ET
+  goal into a breakdown.
+- The bench closes at the regulation whistle too: `POST /api/enter`
+  now rejects entries after `regulationEndTs` ("Full time. The bench
+  is closed."), since such a window could never score.
+
+Regression tests (fold suite now 30 checks, verified by counting PASS
+lines; badges 30/30, signing 35/35, tsc clean): the real log's
+boundary (Seq 963), ET flag, 4-3 shootout read, 0-0 both folds, plus a
+synthetic ET goal stamped mid-ET1 with a realistic Score map. The full
+fold counts it 0-1 (proving the leak the boundary closes), the
+regulation fold holds 0-0, the window scores clean sheet only, and the
+scoreWindow guard keeps it out even when handed the full fold. France
+v Morocco and Argentina v Egypt regulation folds equal their full
+folds (2-0, 3-2): regulation-time matches are untouched.
+
+HTTP end to end on the dev server (SMOKE-REG, removed after):
+
+```
+POST /api/enter  anchor at ET2 kickoff  -> 409 "Full time. The bench is closed."
+POST /api/enter  anchor at 90' (0-0)    -> 200, P(win) 8.5%, 9.54x locked
+POST /api/resolve after the full AET+pens log ->
+  window 40 (clean sheet only), final 0-0 stored, 381.8 points,
+  breakdown free of any extra-time or shootout item
+```
+
+### 7c. Shootout surfaced as display only
+
+The scoreboard shows a result strip under the final when a shootout
+decided it: "0-0 · SUI advanced on penalties 4-3" (team code derived
+from the real name, tally from the PE map). Period label reads "Extra
+time" during StatusId 6 to 9, "Penalties" during 11 to 13, and "Full
+time · Pens" at the end. The clipping (match report) carries the same
+verdict in its subline on the match screen. Zero scoring impact:
+entries store the regulation result, and the career page renders past
+entries from the stored row (no shootout column, none added; the
+subline appears where live state exists).
+
+### 7d. The rule, on the resolution screen
+
+For any match that went past regulation, the resolution overlay's
+result panel adds one line under the entry summary: "Windows settle at
+the regulation whistle" (prefixed with the pens verdict when there was
+one).
+
+### What the demo can claim for knockouts
+
+Extra time and shootouts are real states the app handles: the
+scoreboard follows them honestly, the shootout verdict is displayed,
+and scoring stays inside the regulation event space the multiplier was
+priced on. No bundled fixture has an ET goal, so the ET-goal boundary
+is proven by regression test and synthetic injection, not by a demo
+scenario.

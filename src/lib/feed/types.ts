@@ -46,6 +46,9 @@ export interface MatchEvent {
   // A present entry is authoritative and zero-filled; an absent entry means
   // "no information", carry the previous baseline forward.
   score?: { p1?: TeamCounters; p2?: TeamCounters };
+  // Penalty shootout tally from the Score map's PE period, which the feed
+  // keeps out of Total. Display only: shootout kicks never score windows.
+  shootoutScore?: { p1: number; p2: number };
   data?: Record<string, unknown>;
   startTime?: number;
 }

@@ -9,13 +9,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MatchEvent, OddsUpdate } from "@/lib/feed/types";
-import { foldMatch, type MatchState } from "@/lib/state/fold";
+import { foldMatch, regulationLog, type MatchState } from "@/lib/state/fold";
 import { foldProbSeries } from "@/lib/state/winprob";
 import type { SourceMeta } from "@/lib/sources/types";
 
 export interface MatchStream {
   meta: SourceMeta | null;
   state: MatchState | null;
+  // Regulation-only fold for scoring: windows settle at the regulation
+  // whistle, so provisional points must never see extra-time goals.
+  // Identical to state (same object) until the whistle.
+  scoringState: MatchState | null;
   events: MatchEvent[];
   probSeries: ReturnType<typeof foldProbSeries>;
   feedNow: number;
@@ -122,7 +126,13 @@ export function useMatchStream(
     () => (events.length > 0 ? foldMatch(events, { feedNow: feedNow || undefined }) : null),
     [events, feedNow]
   );
+  const scoringState = useMemo(() => {
+    if (!state) return null;
+    const regulation = regulationLog(events);
+    if (regulation.length === events.length) return state;
+    return foldMatch(regulation, { feedNow: feedNow || undefined });
+  }, [state, events, feedNow]);
   const probSeries = useMemo(() => foldProbSeries(odds), [odds]);
 
-  return { meta, state, events, probSeries, feedNow, connected, fault };
+  return { meta, state, scoringState, events, probSeries, feedNow, connected, fault };
 }

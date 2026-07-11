@@ -8,7 +8,10 @@ import { tierForMultiplier } from "@/lib/config/scoring";
 import { windowResult } from "@/lib/career/window";
 import { fmtMultiplier } from "@/lib/format";
 
-export function MatchReportCard({ entry }: { entry: EntryRow }) {
+// resultNote is display-only context the entry row cannot hold (entries
+// store the regulation result; shootouts never touch scoring): e.g.
+// "SUI advanced on penalties 4-3". Rendered in the clipping subline.
+export function MatchReportCard({ entry, resultNote }: { entry: EntryRow; resultNote?: string | null }) {
   if (!entry.report) return null;
   const date = entry.resolved_at
     ? new Date(entry.resolved_at).toLocaleDateString("en-GB", {
@@ -56,6 +59,12 @@ export function MatchReportCard({ entry }: { entry: EntryRow }) {
         <span>ENTERED {entry.entry_minute}&apos;</span>
         <span>·</span>
         <span>+{entry.final_points} IMPACT</span>
+        {resultNote && (
+          <>
+            <span>·</span>
+            <span>{resultNote.toUpperCase()}</span>
+          </>
+        )}
         {won && (
           <>
             <span>·</span>

@@ -57,6 +57,17 @@ function minuteLabel(minute: number | null): string {
 // which, and gates the whistle bonuses' labels only (the math is identical
 // so the provisional number is always "final points if it ended right
 // now").
+//
+// Knockout rule: windows settle at the REGULATION whistle. The 1X2 odds
+// that set the multiplier price regulation time, so outcomes must live in
+// the same event space; extra-time goals and shootout kicks never score.
+// The canonical state to pass is foldMatch(regulationLog(events)), whose
+// score and countables are regulation-only by construction. As a second
+// fence, window items past state.regulationEndTs are excluded here too,
+// so a caller holding a full-log fold cannot leak an extra-time goal into
+// the breakdown (that caller's win/draw bonus would still read the
+// after-extra-time score, which is why the regulation fold stays the
+// contract, not this guard).
 export function scoreWindow(
   entry: EntryContext,
   state: MatchState,
@@ -69,8 +80,9 @@ export function scoreWindow(
   // Window goals: strictly after the entry instant, net of VAR discards.
   // Discarded goals inside the window are shown as zero-point overturned
   // lines so the story is visible in the breakdown.
+  const regulationCap = state.regulationEndTs ?? Number.POSITIVE_INFINITY;
   const windowGoals = state.countables.filter(
-    (c) => c.kind === "goal" && c.ts > entry.entryFeedTs
+    (c) => c.kind === "goal" && c.ts > entry.entryFeedTs && c.ts <= regulationCap
   );
   let conceded = 0;
   for (const g of windowGoals) {

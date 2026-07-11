@@ -23,7 +23,7 @@ import {
   normalizeMatchEvent,
   normalizeOddsUpdate,
 } from "../src/lib/feed/normalize";
-import { foldMatch } from "../src/lib/state/fold";
+import { foldMatch, regulationLog } from "../src/lib/state/fold";
 import { foldProbSeries, probAt, teamProb } from "../src/lib/state/winprob";
 import { multiplierForProb, scoreWindow, finalPoints } from "../src/lib/state/scoring";
 import type { MatchEvent, OddsUpdate } from "../src/lib/feed/types";
@@ -184,6 +184,112 @@ check(
 check(
   "18202701 keeps the overturned 58' goal visible as discarded",
   argFinal.countables.some((c) => c.id === 570 && c.kind === "goal" && c.discarded)
+);
+
+// 7. Knockout handling, fixture 18202783 (Switzerland v Colombia, 0-0
+// after extra time, Switzerland 4-3 on penalties). The ruling is
+// REGULATION ONLY: the 1X2 odds that set the multiplier price
+// regulation time, so windows settle at the regulation whistle. The
+// log has no goal actions at all, so the extra-time leak is proven
+// with a synthetic ET goal injected after the real regulation
+// boundary: the full fold counts it (which is why scoring must never
+// see the full fold), the regulation fold does not, and scoreWindow
+// keeps it out of the breakdown even when handed the full fold.
+const suiRaw = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), "data", "replay", "18202783", "scores.json"), "utf8")
+) as unknown[];
+const suiEvents = suiRaw
+  .map(normalizeMatchEvent)
+  .filter((e): e is MatchEvent => e !== null);
+const suiFull = foldMatch(suiEvents);
+check(
+  "18202783 regulation boundary at Seq 963 (StatusId 6, extra time coming)",
+  suiFull.regulationEndSeq === 963,
+  `regulationEndSeq ${suiFull.regulationEndSeq}`
+);
+check("18202783 went to extra time", suiFull.wentToExtraTime, `${suiFull.wentToExtraTime}`);
+check(
+  "18202783 shootout read for display: 4-3",
+  suiFull.shootout?.p1 === 4 && suiFull.shootout?.p2 === 3,
+  `${suiFull.shootout?.p1}-${suiFull.shootout?.p2}`
+);
+check(
+  "18202783 regulation fold and full fold both 0-0 (no goal actions, PE excluded)",
+  suiFull.score.p1 === 0 && suiFull.score.p2 === 0 &&
+    (() => { const r = foldMatch(regulationLog(suiEvents)); return r.score.p1 === 0 && r.score.p2 === 0; })(),
+  `full ${suiFull.score.p1}-${suiFull.score.p2}`
+);
+
+// Synthetic extra-time goal for Colombia, stamped inside ET1 on a log
+// truncated to mid extra time (the live shape the provisional path
+// sees). Like a real goal event it carries a fresh Score map whose
+// Total INCLUDES the ET goal; that is how the feed reports extra time
+// (proven by this log's yellow cards: H2 2 + ET1 1 = Total 3), and it
+// is the path an ET goal would leak through.
+const midEt = suiEvents.filter((e) => e.seq <= 1100);
+const lastTs = midEt[midEt.length - 1].ts;
+const etGoal: MatchEvent = {
+  fixtureId: 18202783,
+  seq: 1101,
+  id: 99999,
+  ts: lastTs + 1_000,
+  action: "goal",
+  statusId: 7,
+  confirmed: true,
+  participant: 2,
+  clock: { running: true, seconds: 100 * 60 },
+  score: {
+    p1: { goals: 0, corners: 3, yellowCards: 3, redCards: 0 },
+    p2: { goals: 1, corners: 7, yellowCards: 2, redCards: 0 },
+  },
+};
+const withEtGoal = [...midEt, etGoal];
+const fullWithEt = foldMatch(withEtGoal);
+const regWithEt = foldMatch(regulationLog(withEtGoal));
+check(
+  "18202783+ET-goal: full fold counts it (0-1), which scoring must never see",
+  fullWithEt.score.p1 === 0 && fullWithEt.score.p2 === 1,
+  `full ${fullWithEt.score.p1}-${fullWithEt.score.p2}`
+);
+check(
+  "18202783+ET-goal: regulation fold excludes it (0-0)",
+  regWithEt.score.p1 === 0 && regWithEt.score.p2 === 0,
+  `regulation ${regWithEt.score.p1}-${regWithEt.score.p2}`
+);
+const suiEntryTs = suiEvents.find((e) => e.seq === 900)!.ts; // late second half, 0-0
+const suiWindow = scoreWindow(
+  { team: 1, entryFeedTs: suiEntryTs, scoreTeamAtEntry: 0, scoreOppAtEntry: 0 },
+  regWithEt
+);
+check(
+  "18202783+ET-goal: window vs regulation fold is clean sheet only (40, no conceded)",
+  suiWindow.windowPoints === 40 &&
+    suiWindow.breakdown.every((b) => b.type !== "goal_conceded") &&
+    suiWindow.finalScoreOpp === 0,
+  `window ${suiWindow.windowPoints}, final ${suiWindow.finalScoreTeam}-${suiWindow.finalScoreOpp}`
+);
+const suiWindowFullState = scoreWindow(
+  { team: 1, entryFeedTs: suiEntryTs, scoreTeamAtEntry: 0, scoreOppAtEntry: 0 },
+  fullWithEt
+);
+check(
+  "18202783+ET-goal: scoreWindow guard keeps the ET goal out even on the full fold",
+  suiWindowFullState.breakdown.every((b) => b.type !== "goal_conceded"),
+  suiWindowFullState.breakdown.map((b) => b.type).join(",")
+);
+
+// Regulation-only matches are untouched by the boundary.
+const franceReg = foldMatch(regulationLog(events));
+check(
+  "18209181 regulation fold matches full fold (2-0, regulation finish)",
+  franceReg.score.p1 === 2 && franceReg.score.p2 === 0 && !final.wentToExtraTime && final.shootout === null,
+  `regulation ${franceReg.score.p1}-${franceReg.score.p2}, ET ${final.wentToExtraTime}, shootout ${final.shootout === null ? "null" : "set"}`
+);
+const argReg = foldMatch(regulationLog(argEvents));
+check(
+  "18202701 regulation fold matches full fold (3-2)",
+  argReg.score.p1 === 3 && argReg.score.p2 === 2,
+  `regulation ${argReg.score.p1}-${argReg.score.p2}`
 );
 
 console.log(failures === 0 ? "\nAll fold checks passed." : `\n${failures} CHECKS FAILED`);

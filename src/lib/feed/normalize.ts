@@ -94,6 +94,20 @@ export function normalizeMatchEvent(raw: unknown): MatchEvent | null {
   const p2 = scoreEntry(rawScore, 2);
   const score = p1 !== undefined || p2 !== undefined ? { p1, p2 } : undefined;
 
+  // Penalty shootout tally. The feed keeps shootout goals in a separate
+  // PE period map, deliberately excluded from Total (regulation and ET
+  // never mix with shootout kicks). Present on either participant means
+  // a shootout is in progress or done; absent goals inside a present PE
+  // map are zero by the same contract as every other counter.
+  // k()'s camel fallback for "PE" would be "pE", so try "pe" explicitly.
+  const peEntry = (part: unknown) => k(part, "PE") ?? k(part, "Pe");
+  const pe1 = peEntry(k(rawScore, "Participant1"));
+  const pe2 = peEntry(k(rawScore, "Participant2"));
+  const shootoutScore =
+    (pe1 !== undefined && pe1 !== null) || (pe2 !== undefined && pe2 !== null)
+      ? { p1: num(pe1 ?? {}, "Goals") ?? 0, p2: num(pe2 ?? {}, "Goals") ?? 0 }
+      : undefined;
+
   // Data subfields the app reads, lifted with casing tolerance. The raw
   // blob is not forwarded.
   const rawData = k(raw, "Data");
@@ -124,6 +138,7 @@ export function normalizeMatchEvent(raw: unknown): MatchEvent | null {
     participant: num(raw, "Participant"),
     clock,
     score,
+    shootoutScore,
     data,
     startTime: num(raw, "StartTime"),
   };
