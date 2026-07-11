@@ -49,6 +49,19 @@ interface CreateBody {
 // rule are untouched and keep working; only the write is gated.
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handleCreate(req);
+  } catch (err) {
+    // Never an empty-body 500: the ceremony needs something to print.
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: "The pen ran dry. Try again.", detail: message },
+      { status: 500 }
+    );
+  }
+}
+
+async function handleCreate(req: NextRequest) {
   // The player row is created once; an existing identity keeps it.
   const existing = await currentPlayer();
   if (existing) {

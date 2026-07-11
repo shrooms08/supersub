@@ -42,8 +42,14 @@ export function SigningForm({ onSigned }: { onSigned: (player: PlayerRow) => voi
     setError(null);
     const res = await createPlayer({ name: surname, position, shirtNumber });
     setBusy(false);
-    if (res.player) onSigned(res.player);
-    else setError(res.error ?? "The fax machine jammed. Try again.");
+    if (res.player) {
+      onSigned(res.player);
+    } else if (res.status === 0 || res.status >= 500) {
+      // Timeout, network drop, or a server failure: one line, re-armed.
+      setError("The ink did not take. Try again.");
+    } else {
+      setError(res.error ?? "The ink did not take. Try again.");
+    }
   };
 
   return (

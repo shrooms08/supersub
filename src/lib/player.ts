@@ -1,15 +1,21 @@
 // Player identity types and client-side API helpers. Shared by route
 // handlers and components; no server-only imports.
 
-export const POSITIONS = ["ST", "AM", "CM", "DM", "CB"] as const;
+export const POSITIONS = ["ST", "LW", "RW", "AM", "LM", "CM", "RM", "DM", "LB", "CB", "RB"] as const;
 export type Position = (typeof POSITIONS)[number];
 
 export const POSITION_LABELS: Record<Position, string> = {
   ST: "Striker",
+  LW: "Left winger",
+  RW: "Right winger",
   AM: "Attacking mid",
+  LM: "Left mid",
   CM: "Central mid",
+  RM: "Right mid",
   DM: "Holding mid",
+  LB: "Left back",
   CB: "Centre back",
+  RB: "Right back",
 };
 
 // Display grouping per the canonical design (DEF / MID / FWD). The five
@@ -18,10 +24,16 @@ export const POSITION_LABELS: Record<Position, string> = {
 export type PositionGroup = "DEF" | "MID" | "FWD";
 export const POSITION_GROUPS: Record<Position, PositionGroup> = {
   ST: "FWD",
+  LW: "FWD",
+  RW: "FWD",
   AM: "MID",
+  LM: "MID",
   CM: "MID",
+  RM: "MID",
   DM: "MID",
+  LB: "DEF",
   CB: "DEF",
+  RB: "DEF",
 };
 
 // Surname on the shirt: 2 to 12 characters, A-Z plus hyphen, starting and
@@ -63,11 +75,23 @@ export async function createPlayer(params: {
   position: Position;
   shirtNumber: number;
 }): Promise<{ player?: PlayerRow; error?: string; status: number }> {
-  const res = await fetch("/api/player", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  const body = (await res.json()) as { player?: PlayerRow; error?: string };
-  return { ...body, status: res.status };
+  // Hardened end: a hung function, a network drop, or a bodyless 500 all
+  // come back as a plain failure the ceremony can show and re-arm from.
+  try {
+    const res = await fetch("/api/player", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(10_000),
+    });
+    let body: { player?: PlayerRow; error?: string } = {};
+    try {
+      body = (await res.json()) as { player?: PlayerRow; error?: string };
+    } catch {
+      // empty or non-JSON body; fall through with the status alone
+    }
+    return { ...body, status: res.status };
+  } catch {
+    return { status: 0 };
+  }
 }

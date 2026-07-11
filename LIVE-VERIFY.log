@@ -1,0 +1,26 @@
+[live-verify 2026-07-11T11:41:48.682Z] target https://supersub-tau.vercel.app fixture 18218149, listen window 1 min
+[live-verify 2026-07-11T11:41:48.683Z] start time 2020-01-01T00:00:00.000Z
+[live-verify 2026-07-11T11:41:48.683Z] === join phase ===
+[live-verify 2026-07-11T11:43:08.195Z] FEED snapshot: 36 per-action records
+[live-verify 2026-07-11T11:43:08.999Z] FEED odds snapshot: 0 lines (empty [] (known rollover flake, tolerated))
+[live-verify 2026-07-11T11:43:09.003Z] FEED join reconstructed raw: 1080 events; score 2-1, minute 0', phase finished
+[live-verify 2026-07-11T11:43:09.003Z] === listen phase: 1 minutes ===
+[live-verify 2026-07-11T11:43:23.896Z] APP join reconstructed: 1080 events, 3535 odds ticks in backfill; score 2-1, minute 0', phase finished
+[live-verify 2026-07-11T11:44:09.691Z] === VERDICT ===
+[live-verify 2026-07-11T11:46:27.874Z] target https://supersub-tau.vercel.app fixture 18218149, listen window 0.2 min
+[live-verify 2026-07-11T11:46:27.875Z] start time 2026-07-11T11:47:32.358Z
+[live-verify 2026-07-11T11:46:27.875Z] waiting: T-2m until start
+[live-verify 2026-07-11T11:47:32.360Z] === join phase ===
+[live-verify 2026-07-11T11:48:46.657Z] FEED snapshot: 36 per-action records
+[live-verify 2026-07-11T11:48:46.937Z] FEED odds snapshot: 0 lines (empty [] (known rollover flake, tolerated))
+[live-verify 2026-07-11T11:48:46.939Z] FEED join reconstructed raw: 1080 events; score 2-1, minute 0', phase finished
+[live-verify 2026-07-11T11:48:46.939Z] === listen phase: 0.2 minutes ===
+[live-verify 2026-07-11T11:48:59.099Z] === VERDICT ===
+[live-verify 2026-07-11T11:50:14.843Z] target https://supersub-tau.vercel.app fixture 18213979, listen window 15 min
+[live-verify 2026-07-11T11:50:15.636Z] fixture: Norway v England, kickoff 2026-07-11T21:00:00.000Z
+[live-verify 2026-07-11T11:50:15.636Z] start time 2026-07-11T21:15:00.000Z
+[live-verify 2026-07-11T11:50:15.636Z] waiting: T-565m until start
+[live-verify 2026-07-11T11:55:15.639Z] waiting: T-560m until start
+[live-verify 2026-07-11T12:00:15.640Z] waiting: T-555m until start
+[live-verify 2026-07-11T12:05:15.643Z] waiting: T-550m until start
+[live-verify 2026-07-11T12:10:15.703Z] waiting: T-545m until start

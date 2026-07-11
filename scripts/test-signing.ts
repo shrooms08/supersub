@@ -31,17 +31,27 @@ check("diacritics rejected", validateSurname("MÜLLER") === null);
 check("empty rejected", validateSurname("") === null);
 check("non-string rejected", validateSurname(42 as unknown) === null);
 
-// Position display mapping: five stored values, three display groups,
+// Position display mapping: eleven stored values, three display groups,
 // GK never stored or produced.
 check("ST maps FWD", POSITION_GROUPS.ST === "FWD");
+check("LW maps FWD", POSITION_GROUPS.LW === "FWD");
+check("RW maps FWD", POSITION_GROUPS.RW === "FWD");
 check("AM maps MID", POSITION_GROUPS.AM === "MID");
+check("LM maps MID", POSITION_GROUPS.LM === "MID");
 check("CM maps MID", POSITION_GROUPS.CM === "MID");
+check("RM maps MID", POSITION_GROUPS.RM === "MID");
 check("DM maps MID", POSITION_GROUPS.DM === "MID");
+check("LB maps DEF", POSITION_GROUPS.LB === "DEF");
 check("CB maps DEF", POSITION_GROUPS.CB === "DEF");
+check("RB maps DEF", POSITION_GROUPS.RB === "DEF");
 check(
-  "stored vocabulary unchanged (five, no GK)",
-  POSITIONS.length === 5 && !POSITIONS.includes("GK" as never),
+  "stored vocabulary is eleven, no GK",
+  POSITIONS.length === 11 && !POSITIONS.includes("GK" as never),
   POSITIONS.join(",")
+);
+check(
+  "every stored position has a label and a group",
+  POSITIONS.every((p) => Boolean(POSITION_GROUPS[p])),
 );
 check(
   "no group is GK",
