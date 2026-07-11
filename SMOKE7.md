@@ -21,7 +21,7 @@ $ git diff --stat 94fd169 HEAD -- src/lib src/app/api scripts/ supabase/ src/hoo
 
 $ npx tsx scripts/test-fold.ts     # 16/16  All fold checks passed.
 $ npx tsx scripts/test-badges.ts   # 30/30  All badge checks passed.
-$ npx tsx scripts/test-signing.ts  # 35/35  All signing checks passed.
+$ npx tsx scripts/test-signing.ts  # 34/34 at capture time (35/35 since GK)
 $ node scripts/smoke-career.mjs    # ALL PHASE 2 SMOKE CHECKS PASSED
 ```
 
@@ -132,8 +132,8 @@ gains the GK group, and the signing pills render it from the same list
 Migration `0004_gk_position.sql` widens `players_position_check` only,
 same shape as 0003; applied and verified. `test:signing` now covers
 "GK maps GK (its own group)", "stored vocabulary is twelve, GK
-included", and "GK is the only position in the GK group" (39 checks
-total). End-to-end over HTTP: POST with position GK answered 201 and
+included", and "GK is the only position in the GK group" (35 checks
+total, verified by counting PASS lines). End-to-end over HTTP: POST with position GK answered 201 and
 stored GK; read-back with the cookie returned GK on `/api/player` and
 `/api/career`; the test player was purged with the one-liner. Fold
 16/16 and badges 30/30 unchanged.

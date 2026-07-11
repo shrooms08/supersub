@@ -126,7 +126,7 @@ Also in this pass: positions expanded to eleven stored values (LW/RW
 to FWD, LM/RM to MID, LB/RB to DEF, no GK; the request said ten but
 named six additions to the existing five, and the explicit list wins).
 Migration 0003 widens the position CHECK constraint only: no columns,
-tables, or data change. test:signing is now 35 checks.
+tables, or data change. test:signing is now 34 checks (count corrected 2026-07-11; originally overstated as 35).
 
 Re-verification on the fixed preview
 (supersub-l8lcyqj60-shrooms08s-projects.vercel.app): the exact repro
