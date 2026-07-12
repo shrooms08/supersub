@@ -39,8 +39,19 @@ export const metadata: Metadata = {
   title: "Super Sub",
   description:
     "Choose the minute you enter a real live match, and get scored on what actually happens next.",
-  // app/icon.svg and app/apple-icon.png are wired automatically by Next;
-  // the 512 mark is named here for social and manifest use.
+  // Icons declared explicitly (belt and braces): this guarantees the
+  // <link rel="icon"> tags are in the served HTML even if the app-router
+  // file convention does not emit on a given build. The SVG mark is the
+  // primary favicon; public/favicon.ico is the universal fallback;
+  // apple-icon.png is the touch icon.
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "32x32" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
   openGraph: {
     title: "Super Sub",
     description:
