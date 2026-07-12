@@ -7,6 +7,7 @@ const nextConfig = {
     outputFileTracingIncludes: {
       "/api/**": ["./data/replay/**"],
       "/judges": ["./data/replay/**"],
+      "/match/[fixtureId]/report": ["./data/replay/**"],
     },
   },
   webpack: (config) => {

@@ -63,6 +63,7 @@ export function FixtureCard({
   now,
   final,
   replayReady,
+  reportHref,
 }: {
   listing: FixtureListing;
   result: FixtureResult | null;
@@ -72,6 +73,9 @@ export function FixtureCard({
   // Judges' replay cards: a truthful REPLAY READY chip and a REPLAY THE
   // MATCH action instead of the schedule-derived phase and enter copy.
   replayReady?: boolean;
+  // When set, a finished fixture links to its Match Detail report. This
+  // is a newspaper, not a turnstile: it opens the story, never an entry.
+  reportHref?: string;
 }) {
   const { fixture, phase, mode } = listing;
   const playable = phase === "live" || mode === "replay";
@@ -194,6 +198,15 @@ export function FixtureCard({
   return playable ? (
     <Link
       href={href}
+      className="panel panel-hover block overflow-hidden !rounded-[14px] !bg-[#0d0d10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
+    >
+      {inner}
+    </Link>
+  ) : reportHref ? (
+    // Finished fixture with a story: the card opens the Match Detail
+    // report. Read-only; no entry path.
+    <Link
+      href={reportHref}
       className="panel panel-hover block overflow-hidden !rounded-[14px] !bg-[#0d0d10] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
     >
       {inner}

@@ -336,6 +336,11 @@ function BenchInner() {
                         href={matchHref(f.fixture.fixtureId, "live")}
                         now={now}
                         final={f.phase === "finished" && "score" in f ? finalFor(f.fixture, f) : undefined}
+                        reportHref={
+                          f.phase === "finished" && "hasReport" in f && f.hasReport
+                            ? `/match/${f.fixture.fixtureId}/report`
+                            : undefined
+                        }
                       />
                     ))
                   )
@@ -359,6 +364,7 @@ function BenchInner() {
                             href={matchHref(f.fixture.fixtureId, "live")}
                             now={now}
                             final={finalFor(f.fixture, f)}
+                            reportHref={f.hasReport ? `/match/${f.fixture.fixtureId}/report` : undefined}
                           />
                         ))}
                       </div>

@@ -304,6 +304,15 @@ export function ResolutionOverlay({
           </>
         )}
 
+        {resolved && entry && stage >= 4 && (
+          <Link
+            href={`/match/${entry.fixture_id}/report`}
+            className="block rounded-[11px] border border-white/[0.14] px-4 py-3 text-center font-label text-[11px] font-bold uppercase tracking-[0.16em] text-chalk-300 transition-colors hover:border-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
+          >
+            Read the full match story &rarr;
+          </Link>
+        )}
+
         <div className="flex gap-2">
           <Link
             href="/career"

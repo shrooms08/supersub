@@ -14,6 +14,7 @@
 import { normalizeFixture } from "@/lib/feed/normalize";
 import type { Fixture, Phase } from "@/lib/feed/types";
 import { epochDay, txGetJson } from "@/lib/server/txline";
+import { reportAvailable } from "@/lib/server/match-timeline";
 
 // Kickoff to roughly full time plus 30 minutes: the window a fixture is
 // treated as LIVE. 150 minutes safely spans 90 plus stoppage, a
@@ -44,7 +45,13 @@ export interface FinalScore {
   scoreless: boolean;
 }
 
-export interface ResultFixture extends ScheduleFixture, FinalScore {}
+export interface ResultFixture extends ScheduleFixture, FinalScore {
+  // Whether a Match Detail report can be built for this fixture (a
+  // bundled replay, or a real fixture the feed has a canonical score
+  // for). Result rows only link when true, so there is never a dead
+  // click.
+  hasReport: boolean;
+}
 
 export interface SchedulePayload {
   now: number;
@@ -215,7 +222,7 @@ async function buildSchedule(now: number): Promise<SchedulePayload> {
       pens: null,
       scoreless: true,
     };
-    return { ...f, ...s };
+    return { ...f, ...s, hasReport: reportAvailable(f.fixture.fixtureId, s.score !== null) };
   };
 
   const results = finished.map(withScore);
