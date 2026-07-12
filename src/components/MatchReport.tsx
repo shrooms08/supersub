@@ -153,11 +153,25 @@ export function MatchReport({ timeline }: { timeline: MatchTimeline }) {
             <TeamLabel name={timeline.participant2} />
           </span>
         </div>
-        <p className="mt-2 font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-500">
-          {timeline.wentToExtraTime ? "After extra time" : "Full time"}
-          {pens ? ` · ${pens}` : ""}
-        </p>
+        {timeline.live ? (
+          <p className="mt-2 inline-flex items-center gap-1.5 font-label text-[9px] font-bold uppercase tracking-[0.16em] text-volt">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-volt animate-live-pulse" />
+            Live
+            {timeline.currentMinute !== null ? ` · ${timeline.currentMinute}'` : ""}
+          </p>
+        ) : (
+          <p className="mt-2 font-label text-[9px] font-semibold uppercase tracking-[0.14em] text-chalk-500">
+            {timeline.wentToExtraTime ? "After extra time" : "Full time"}
+            {pens ? ` · ${pens}` : ""}
+          </p>
+        )}
       </section>
+
+      {timeline.live && (
+        <p className="-mt-2 px-1 text-center font-label text-[9px] leading-relaxed text-chalk-600">
+          This is the story so far. It updates as the match unfolds; refresh for the latest.
+        </p>
+      )}
 
       {/* Timeline */}
       <section aria-label="Timeline" className="panel !rounded-2xl px-4 py-2">

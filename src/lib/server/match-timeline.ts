@@ -19,7 +19,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { normalizeMatchEvent } from "@/lib/feed/normalize";
-import { foldMatch } from "@/lib/state/fold";
+import { foldMatch, stateMinute } from "@/lib/state/fold";
 import {
   epochDay,
   fiveMinInterval,
@@ -65,6 +65,11 @@ export interface MatchTimeline {
   pens: { p1: number; p2: number } | null;
   wentToExtraTime: boolean;
   hasRoster: boolean;
+  // In-play state: when the match has not finished, the report shows the
+  // timeline SO FAR with a LIVE chip and the current minute. Live reports
+  // are cached only briefly (see the cache note).
+  live: boolean;
+  currentMinute: number | null;
   events: TimelineEvent[];
 }
 
@@ -261,7 +266,9 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
     .map(normalizeMatchEvent)
     .filter((e): e is MatchEvent => e !== null)
     .sort((a, b) => a.seq - b.seq);
-  const state = foldMatch(events);
+  const now = Date.now();
+  const state = foldMatch(events, { feedNow: now });
+  const live = state.phase !== "finished";
   const discarded = new Set(
     state.countables.filter((c) => c.discarded && c.kind === "goal").map((c) => c.id)
   );
@@ -361,6 +368,8 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
     pens: state.shootout,
     wentToExtraTime: state.wentToExtraTime,
     hasRoster: roster.size > 0,
+    live,
+    currentMinute: live ? stateMinute(state, now) : null,
     events: events2,
   };
 }
@@ -368,13 +377,16 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
 // ---- cache ----------------------------------------------------------------
 //
 // Per-instance in-memory cache. A finished match's story is immutable, so
-// the TTL exists only to bound memory over a long-lived instance, not for
-// freshness. Each entry is a few KB (tens of timeline items); the size cap
-// keeps the map small if many fixtures are viewed. Serverless instances
-// are ephemeral, so a cold instance recomputes once; within an instance,
-// the second and later requests for a fixture never re-fold.
+// its TTL (60 min) exists only to bound memory over a long-lived instance,
+// not for freshness. An in-play match keeps changing, so a live timeline
+// is cached only 60s: long enough to absorb a burst of views, short enough
+// that a refresh a minute later shows new events. Each entry is a few KB;
+// the size cap keeps the map small if many fixtures are viewed. Serverless
+// instances are ephemeral, so a cold instance recomputes once; within an
+// instance a repeat request inside the TTL never re-folds.
 
-const TTL_MS = 60 * 60_000;
+const FINISHED_TTL_MS = 60 * 60_000;
+const LIVE_TTL_MS = 60_000;
 const MAX_ENTRIES = 64;
 const cache = new Map<number, { at: number; timeline: MatchTimeline }>();
 
@@ -400,7 +412,10 @@ async function compute(fixtureId: number): Promise<MatchTimeline | null> {
 
 export async function getMatchTimeline(fixtureId: number): Promise<MatchTimeline | null> {
   const hit = cache.get(fixtureId);
-  if (hit && Date.now() - hit.at < TTL_MS) return hit.timeline;
+  if (hit) {
+    const ttl = hit.timeline.live ? LIVE_TTL_MS : FINISHED_TTL_MS;
+    if (Date.now() - hit.at < ttl) return hit.timeline;
+  }
   const timeline = await compute(fixtureId);
   if (timeline) {
     if (cache.size >= MAX_ENTRIES) {

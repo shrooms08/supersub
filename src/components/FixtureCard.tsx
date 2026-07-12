@@ -64,6 +64,7 @@ export function FixtureCard({
   final,
   replayReady,
   reportHref,
+  live,
 }: {
   listing: FixtureListing;
   result: FixtureResult | null;
@@ -76,6 +77,10 @@ export function FixtureCard({
   // When set, a finished fixture links to its Match Detail report. This
   // is a newspaper, not a turnstile: it opens the story, never an entry.
   reportHref?: string;
+  // Current score and derived minute for a live fixture, from the shared
+  // /api/live-scores poll. When present on a live card, the centre shows
+  // live state (minute or HT/ET plus score) instead of the kickoff time.
+  live?: { score: { p1: number; p2: number }; minute: number; label: string | null } | null;
 }) {
   const { fixture, phase, mode } = listing;
   const playable = phase === "live" || mode === "replay";
@@ -84,6 +89,8 @@ export function FixtureCard({
   // A finished schedule fixture (not a bundled replay) shows its final
   // score in the centre column instead of a kickoff stamp.
   const showFinal = phase === "finished" && !isReplay && final !== undefined && final !== null;
+  // A live fixture shows its live minute and score.
+  const showLive = phase === "live" && !isReplay && live !== undefined && live !== null;
 
   const inner = (
     <div className="px-[13px] py-3">
@@ -112,6 +119,15 @@ export function FixtureCard({
               </span>
               <span className="hero-number mt-0.5 block text-[22px] tabular-nums leading-none tracking-[0.04em] text-chalk-300">
                 {countdownLabel(fixture.startTime, now)}
+              </span>
+            </>
+          ) : showLive ? (
+            <>
+              <span className="block font-label text-[8px] font-bold uppercase tracking-[0.16em] text-volt">
+                {live!.label ?? `${live!.minute}'`}
+              </span>
+              <span className="hero-number mt-0.5 block text-2xl tabular-nums leading-none tracking-[0.04em] text-chalk-50">
+                {live!.score.p1}&ndash;{live!.score.p2}
               </span>
             </>
           ) : showFinal ? (

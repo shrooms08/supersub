@@ -209,6 +209,37 @@ function BenchInner() {
     return () => clearInterval(t);
   }, [needsClock]);
 
+  // Live score/minute for the live fixtures, from ONE shared poll (no
+  // per-card streams). Cached server-side; refreshed at 40s.
+  const liveIdsKey = today
+    .filter((f) => f.live)
+    .map((f) => f.fixture.fixtureId)
+    .join(",");
+  const [liveScores, setLiveScores] = useState<
+    Record<number, { score: { p1: number; p2: number }; minute: number; label: string | null }>
+  >({});
+  useEffect(() => {
+    if (!liveIdsKey) {
+      setLiveScores({});
+      return;
+    }
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const res = await fetch(`/api/live-scores?ids=${liveIdsKey}`, { cache: "no-store" });
+        if (res.ok && !cancelled) setLiveScores(await res.json());
+      } catch {
+        // a missed poll just leaves the last values; the card stays live
+      }
+    };
+    void poll();
+    const t = setInterval(() => void poll(), 40_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [liveIdsKey]);
+
   // Tab state, mirrored to ?tab= so a link lands on a specific tab.
   const tabParam = searchParams.get("tab");
   const [tab, setTab] = useState<Tab>(
@@ -336,6 +367,7 @@ function BenchInner() {
                         href={matchHref(f.fixture.fixtureId, "live")}
                         now={now}
                         final={f.phase === "finished" && "score" in f ? finalFor(f.fixture, f) : undefined}
+                        live={f.live ? liveScores[f.fixture.fixtureId] ?? null : undefined}
                         reportHref={
                           f.phase === "finished" && "hasReport" in f && f.hasReport
                             ? `/match/${f.fixture.fixtureId}/report`

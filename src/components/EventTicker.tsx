@@ -8,6 +8,7 @@
 // simulated), then settles as a struck-through line wearing its overturn.
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Fixture } from "@/lib/feed/types";
 import type { TickerItem } from "@/lib/state/fold";
 import { ACTION_LABELS } from "@/lib/format";
@@ -96,16 +97,24 @@ export function EventTicker({
         <h2 className="font-label text-[10px] font-bold uppercase tracking-[0.18em] text-chalk-500">
           Match ticker
         </h2>
-        {live ? (
-          <span className="flex items-center gap-[5px] font-label text-[8px] font-bold uppercase tracking-[0.16em] text-volt">
-            <span aria-hidden className="h-[5px] w-[5px] rounded-full bg-volt animate-live-pulse" />
-            Updating
-          </span>
-        ) : (
-          <span className="font-label text-[8px] font-bold uppercase tracking-[0.16em] text-chalk-600">
-            {shown.length > 0 ? `Last ${shown.length}` : "Waiting"}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {live ? (
+            <span className="flex items-center gap-[5px] font-label text-[8px] font-bold uppercase tracking-[0.16em] text-volt">
+              <span aria-hidden className="h-[5px] w-[5px] rounded-full bg-volt animate-live-pulse" />
+              Updating
+            </span>
+          ) : (
+            <span className="font-label text-[8px] font-bold uppercase tracking-[0.16em] text-chalk-600">
+              {shown.length > 0 ? `Last ${shown.length}` : "Waiting"}
+            </span>
+          )}
+          <Link
+            href={`/match/${fixture.fixtureId}/report`}
+            className="font-label text-[8px] font-bold uppercase tracking-[0.16em] text-chalk-400 transition-colors hover:text-chalk-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chalk-50"
+          >
+            Full timeline &rarr;
+          </Link>
+        </div>
       </div>
       {shown.length === 0 ? (
         <div className="px-4 py-6 text-center">
