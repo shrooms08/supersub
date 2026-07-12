@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePrivy, useExportWallet } from "@privy-io/react-auth";
 import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
-import { claimActive, SOLANA_RPC } from "@/lib/claim";
+import { claimActive, SOLANA_RPCS } from "@/lib/claim";
 import { maskWallet } from "@/lib/player";
 
 // The user's Solana wallet address from their linked accounts. The app
@@ -77,14 +77,27 @@ function WalletInner() {
     if (!address) return;
     let cancelled = false;
     setBalance(null);
+    const key = new PublicKey(address);
+    const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error("rpc timeout")), ms)),
+      ]);
     (async () => {
-      try {
-        const conn = new Connection(SOLANA_RPC, "confirmed");
-        const lamports = await conn.getBalance(new PublicKey(address));
-        if (!cancelled) setBalance(lamports / LAMPORTS_PER_SOL);
-      } catch {
-        if (!cancelled) setBalance("error");
+      // Try each public RPC in turn; the first that answers wins, so a
+      // rate-limited or CORS-blocked endpoint falls through instead of
+      // reading "Unavailable".
+      for (const url of SOLANA_RPCS) {
+        try {
+          const conn = new Connection(url, "confirmed");
+          const lamports = await withTimeout(conn.getBalance(key), 6000);
+          if (!cancelled) setBalance(lamports / LAMPORTS_PER_SOL);
+          return;
+        } catch {
+          // next endpoint
+        }
       }
+      if (!cancelled) setBalance("error");
     })();
     return () => {
       cancelled = true;

@@ -15,5 +15,17 @@ export const claimActive = CLAIM_ENABLED && PRIVY_APP_ID.length > 0;
 
 // Public Solana RPC for the read-only wallet balance. Overridable; a
 // public mainnet endpoint by default. Display only, no transactions.
-export const SOLANA_RPC =
-  process.env.NEXT_PUBLIC_SOLANA_RPC ?? "https://api.mainnet-beta.solana.com";
+// Public Solana RPCs for the read-only wallet balance, tried in order
+// until one answers. The official api.mainnet-beta endpoint rate-limits
+// hard and often blocks browser CORS (which showed as "Unavailable"), so
+// a CORS-friendly free endpoint leads and the official one is the
+// fallback. NEXT_PUBLIC_SOLANA_RPC, if set, is tried first.
+const FALLBACK_SOLANA_RPCS = [
+  "https://solana-rpc.publicnode.com",
+  "https://api.mainnet-beta.solana.com",
+];
+export const SOLANA_RPCS = process.env.NEXT_PUBLIC_SOLANA_RPC
+  ? [process.env.NEXT_PUBLIC_SOLANA_RPC, ...FALLBACK_SOLANA_RPCS]
+  : FALLBACK_SOLANA_RPCS;
+// Backwards-compatible single endpoint (the primary of the list).
+export const SOLANA_RPC = SOLANA_RPCS[0];
