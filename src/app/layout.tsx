@@ -35,13 +35,31 @@ const archivo = Archivo({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://supersub-tau.vercel.app"),
   title: "Super Sub",
   description:
-    "You are the fantasy substitute. One action: enter the pitch. The later and the worse it looks, the bigger the multiplier.",
+    "Choose the minute you enter a real live match, and get scored on what actually happens next.",
+  // app/icon.svg and app/apple-icon.png are wired automatically by Next;
+  // the 512 mark is named here for social and manifest use.
+  openGraph: {
+    title: "Super Sub",
+    description:
+      "Choose the minute you enter a real live match, and get scored on what actually happens next.",
+    siteName: "Super Sub",
+    images: [{ url: "/mark-512.png", width: 512, height: 512, alt: "Super Sub" }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Super Sub",
+    description:
+      "Choose the minute you enter a real live match, and get scored on what actually happens next.",
+    images: ["/mark-512.png"],
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#070708",
+  themeColor: "#0b0b0d",
   width: "device-width",
   initialScale: 1,
 };

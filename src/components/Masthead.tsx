@@ -22,9 +22,27 @@ export function Masthead({
         <p className="font-label text-[10px] font-bold uppercase tracking-[0.22em] text-volt">
           The Bench
         </p>
-        <h1 className="hero-number mt-1 text-[26px] uppercase leading-[0.9] text-chalk-50 lg:text-4xl">
-          Matchday
-        </h1>
+        <div className="mt-1 flex items-center gap-2">
+          {/* The brand mark, inline so it paints with the header (no fetch,
+              no layout shift) and sits at 24px next to the title. */}
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 100 100"
+            aria-hidden
+            className="shrink-0 rounded-[6px]"
+          >
+            <rect width="100" height="100" fill="#0b0b0d" />
+            <path
+              fill="#c8ff00"
+              fillRule="evenodd"
+              d="M26,12 H74 A18,18 0 0 1 92,30 V70 A18,18 0 0 1 74,88 H26 A18,18 0 0 1 8,70 V30 A18,18 0 0 1 26,12 Z M36,28 L47,46 L41,46 L41,72 L31,72 L31,46 L25,46 Z M64,72 L75,54 L69,54 L69,28 L59,28 L59,54 L53,54 Z"
+            />
+          </svg>
+          <h1 className="hero-number text-[26px] uppercase leading-[0.9] text-chalk-50 lg:text-4xl">
+            Matchday
+          </h1>
+        </div>
       </div>
 
       {/* Mobile: stacked date + count. Desktop: chips. */}
