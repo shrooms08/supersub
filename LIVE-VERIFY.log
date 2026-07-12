@@ -117,3 +117,7 @@
 [live-verify 2026-07-11T19:45:16.406Z] waiting: T-90m until start
 [live-verify 2026-07-11T19:50:16.324Z] waiting: T-85m until start
 [live-verify 2026-07-11T19:55:16.330Z] waiting: T-80m until start
+[live-verify 2026-07-11T20:35:48.265Z] target https://supersub-tau.vercel.app fixture 18213979, listen window 15 min
+[live-verify 2026-07-11T20:35:50.136Z] fixture: Norway v England, kickoff 2026-07-11T21:00:00.000Z
+[live-verify 2026-07-11T20:35:50.136Z] start time 2026-07-11T21:15:00.000Z
+[live-verify 2026-07-11T20:35:50.136Z] waiting: T-40m until start
