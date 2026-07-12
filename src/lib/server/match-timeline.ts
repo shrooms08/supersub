@@ -45,6 +45,10 @@ export type TimelineKind =
 
 export interface TimelineEvent {
   kind: TimelineKind;
+  // Action id (goal/card/substitution). Lets the live ticker key resolved
+  // names to its own items, which carry the same action id. Absent on
+  // period breaks.
+  id?: number;
   seq: number;
   minute: number | null;
   team: 1 | 2 | null;
@@ -285,6 +289,7 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
     const isOut = discarded.has(id);
     items.push({
       kind: isOut ? "var_overturn" : "goal",
+      id,
       seq: num(e, "Seq") ?? 0,
       minute: minuteOf(e),
       team: team === 1 || team === 2 ? team : null,
@@ -298,6 +303,7 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
       const team = num(e, "Participant");
       items.push({
         kind: action,
+        id: num(e, "Id"),
         seq: num(e, "Seq") ?? 0,
         minute: minuteOf(e),
         team: team === 1 || team === 2 ? team : null,
@@ -311,6 +317,7 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
     const team = num(data, "Participant") ?? num(e, "Participant");
     items.push({
       kind: "substitution",
+      id: num(e, "Id"),
       seq: num(e, "Seq") ?? 0,
       minute: minuteOf(e),
       team: team === 1 || team === 2 ? team : null,

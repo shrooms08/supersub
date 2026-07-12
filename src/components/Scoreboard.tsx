@@ -8,6 +8,7 @@
 
 import type { Fixture } from "@/lib/feed/types";
 import { stateMinute, type MatchState } from "@/lib/state/fold";
+import { flagFor } from "@/lib/flags";
 import { PhaseBadge } from "./PhaseBadge";
 
 export function teamCode(name: string): string {
@@ -63,14 +64,18 @@ function TeamBlock({
   right?: boolean;
   stripes: string;
 }) {
+  // The fixed-size block shows the team flag (same emoji as the bench
+  // fixture cards); an unmapped team keeps the three-letter code, so the
+  // block is never blank and its dimensions never change.
+  const flag = flagFor(name);
   return (
     <div className={`flex items-center gap-[11px] ${right ? "flex-row-reverse" : ""}`}>
       <div
         aria-hidden
-        className="grid h-9 w-9 flex-none place-items-center rounded-[9px] border border-white/10 bg-[#17171c] font-display text-base font-bold sm:h-[46px] sm:w-[46px] sm:text-xl"
+        className="grid h-9 w-9 flex-none place-items-center rounded-[9px] border border-white/10 bg-[#17171c] font-display text-lg font-bold leading-none sm:h-[46px] sm:w-[46px] sm:text-2xl"
         style={{ backgroundImage: stripes }}
       >
-        {teamCode(name)}
+        {flag ?? teamCode(name)}
       </div>
       <div className={`hidden sm:block ${right ? "text-right" : ""}`}>
         <p className="hero-number max-w-[130px] truncate text-[15px] uppercase leading-none text-chalk-50">

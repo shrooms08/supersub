@@ -66,6 +66,43 @@ export function MatchScreen({
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [varBanner, setVarBanner] = useState(false);
 
+  // Resolved player names for the ticker, from the Match Detail resolver
+  // (the same server that powers /match/[id]/report). Fetched on mount
+  // and refreshed at 45s so a live match picks up new names; the ticker
+  // falls back to team-only where the roster does not resolve.
+  const [tickerNames, setTickerNames] = useState<
+    Record<number, { playerName?: string | null; secondaryName?: string | null }>
+  >({});
+  useEffect(() => {
+    let cancelled = false;
+    const NAMED = new Set(["goal", "var_overturn", "yellow_card", "red_card", "substitution"]);
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/match-timeline/${fixtureId}`, { cache: "no-store" });
+        if (!res.ok) return;
+        const body = (await res.json()) as {
+          timeline: { events: Array<{ id?: number; kind: string; playerName?: string | null; secondaryName?: string | null }> } | null;
+        };
+        if (cancelled || !body.timeline) return;
+        const map: Record<number, { playerName?: string | null; secondaryName?: string | null }> = {};
+        for (const e of body.timeline.events) {
+          if (e.id != null && NAMED.has(e.kind)) {
+            map[e.id] = { playerName: e.playerName ?? null, secondaryName: e.secondaryName ?? null };
+          }
+        }
+        if (!cancelled) setTickerNames(map);
+      } catch {
+        // names are enrichment; a miss just keeps the team-only rows
+      }
+    };
+    void load();
+    const t = setInterval(() => void load(), 45_000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
+  }, [fixtureId]);
+
   useEffect(() => {
     let cancelled = false;
     fetchPlayerSummary().then((s) => {
@@ -385,6 +422,7 @@ export function MatchScreen({
         fixture={fixture}
         live={phase === "live"}
         swing={phase === "live" ? swingStats : null}
+        names={tickerNames}
       />
       </div>
 

@@ -65,11 +65,17 @@ export function EventTicker({
   fixture,
   live,
   swing,
+  names,
 }: {
   items: TickerItem[];
   fixture: Fixture;
   live?: boolean;
   swing?: SwingStats | null;
+  // Resolved player names by action id, from the Match Detail resolver
+  // (lineups roster + confirmed Data.PlayerId). Absent, empty, or an
+  // unresolved id all fall back to the current team-only rendering, and
+  // nothing is ever invented.
+  names?: Record<number, { playerName?: string | null; secondaryName?: string | null }>;
 }) {
   const shown = [...items].reverse().slice(0, MAX_ITEMS);
 
@@ -134,6 +140,19 @@ export function EventTicker({
             const isGoal = item.action === "goal";
             const chip = chipFor(item.action);
             const isRipping = ripping.has(item.id) && item.discarded;
+            // Resolved name(s) for this action, where the roster resolved
+            // them; otherwise the row reads exactly as before.
+            const resolved = names?.[item.id];
+            let nameLine: string | null = null;
+            if (item.action === "substitution") {
+              if (resolved && (resolved.playerName || resolved.secondaryName)) {
+                nameLine = `${resolved.playerName ?? "?"} on${
+                  resolved.secondaryName ? `, ${resolved.secondaryName} off` : ""
+                }`;
+              }
+            } else if (resolved?.playerName) {
+              nameLine = resolved.playerName;
+            }
             return (
               <li
                 key={`${item.id}:${item.action}`}
@@ -186,8 +205,8 @@ export function EventTicker({
                           : "text-chalk-400"
                     }`}
                   >
-                    {label}
-                    {item.detail ? ` (${item.detail})` : ""}
+                    {nameLine ?? label}
+                    {!nameLine && item.detail ? ` (${item.detail})` : ""}
                   </span>
                 </span>
               </li>
