@@ -18,6 +18,7 @@ import { FixtureCard, type FixtureFinal } from "@/components/FixtureCard";
 import { TheTable } from "@/components/TheTable";
 import { LegendaryEntries } from "@/components/LegendaryEntries";
 import { SigningForm } from "@/components/SigningForm";
+import { ResumeGate } from "@/components/ResumeGate";
 import { ClaimLegend } from "@/components/ClaimLegend";
 import { teamCode } from "@/components/Scoreboard";
 import { fetchPlayerSummary, type PlayerSummary } from "@/lib/player";
@@ -225,10 +226,13 @@ function BenchInner() {
   );
   const resultDays = groupByDay(results, true);
 
-  // First run (or any playerless visit) lands on Signing Day.
+  // First run (or any playerless visit) lands on Signing Day. A returning
+  // player who claimed on another browser gets a Resume banner above it
+  // (inert while the claim feature is dark).
   if (summary && !player) {
     return (
       <main className="mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-4 py-10">
+        <ResumeGate onResumed={() => void loadIdentity()} />
         <SigningForm
           onSigned={(p) => {
             setSummary({ player: p, appearances: 0, impactRating: null, played: {} });
