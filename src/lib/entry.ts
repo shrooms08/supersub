@@ -30,6 +30,11 @@ export interface EntryRow {
   // The match report, stored once at resolution (Phase 2).
   report: string | null;
   report_source: "model" | "template" | null;
+  // Exhibition entries (bundled replay fixtures) keep the full loop and
+  // career history but never touch a competitive number. Derived from the
+  // bundled-fixture id list at resolution. Older rows may be undefined
+  // until backfilled; treat undefined as false.
+  exhibition?: boolean;
 }
 
 // Identity travels in the signed player cookie; no ids in these payloads.

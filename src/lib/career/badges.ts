@@ -66,13 +66,31 @@ export interface ResolvedEntryFacts {
 }
 
 // Badges earned BY this resolution. `appearances` counts resolved entries
-// for the player INCLUDING this one. Already-earned badges are deduped by
-// the primary key on player_badges, so re-reporting one is harmless.
-export function evaluateBadges(entry: ResolvedEntryFacts, appearances: number): BadgeKey[] {
+// for the player INCLUDING this one (any kind: a debut is a debut).
+// Already-earned badges are deduped by the primary key on player_badges,
+// so re-reporting one is harmless.
+//
+// Exhibition rule: First Whistle can be earned on an exhibition debut, but
+// every other badge requires a live entry, and the appearance-gated
+// Ever Present counts LIVE appearances only. opts defaults to a live,
+// non-exhibition entry with liveAppearances = appearances, so existing
+// callers and tests behave exactly as before.
+export function evaluateBadges(
+  entry: ResolvedEntryFacts,
+  appearances: number,
+  opts: { exhibition?: boolean; liveAppearances?: number } = {}
+): BadgeKey[] {
+  const exhibition = opts.exhibition ?? false;
+  const liveAppearances = opts.liveAppearances ?? appearances;
   const earned: BadgeKey[] = [];
 
+  // A debut is a debut, exhibition or not.
   if (appearances === 1) earned.push("first_whistle");
-  if (appearances >= 5) earned.push("ever_present");
+
+  // Every other badge requires a live entry.
+  if (exhibition) return earned;
+
+  if (liveAppearances >= 5) earned.push("ever_present");
 
   // Miracle Worker: won the window after entering at p <= 0.10.
   if (entry.win_prob_at_entry <= 0.10 && windowResult(entry.breakdown) === "W") {

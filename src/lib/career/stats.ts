@@ -17,9 +17,13 @@ export interface CareerRecord {
   impactRating: number | null;
 }
 
+// Career aggregates count COMPETITIVE (non-exhibition) entries only, so
+// exhibition replays never move Impact Rating, points, form, or the
+// legendary count. Exhibition entries still appear in the match history,
+// which is built elsewhere from the full set.
 export function careerRecord(resolvedEntries: EntryRow[]): CareerRecord {
   const resolved = resolvedEntries
-    .filter((e) => e.resolved_at !== null)
+    .filter((e) => e.resolved_at !== null && e.exhibition !== true)
     .sort((a, b) => (a.resolved_at! < b.resolved_at! ? 1 : -1));
 
   const appearances = resolved.length;

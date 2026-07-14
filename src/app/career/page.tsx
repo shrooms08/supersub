@@ -132,8 +132,11 @@ export default function CareerPage() {
 
   const { player, record, badges, history, claim } = data;
   const earnedCount = badges.filter((b) => b.earnedAt !== null).length;
-  const bestMultiplier = history.length
-    ? Math.max(...history.map((h) => h.multiplier))
+  // BEST is a competitive stat, so exhibition entries are excluded; the
+  // history list below still shows them, tagged.
+  const competitive = history.filter((h) => h.exhibition !== true);
+  const bestMultiplier = competitive.length
+    ? Math.max(...competitive.map((h) => h.multiplier))
     : null;
 
   return (
@@ -339,6 +342,14 @@ export default function CareerPage() {
                         {entry.team_name} {entry.final_score_team}&ndash;{entry.final_score_opp}{" "}
                         {entry.opponent_name}
                       </span>
+                      {entry.exhibition && (
+                        <span
+                          className="mt-1 inline-block rounded-sm px-1.5 py-0.5 font-label text-[7px] font-bold uppercase tracking-[0.12em] text-volt lg:text-[8px]"
+                          style={{ background: "rgba(200,255,0,.12)" }}
+                        >
+                          Exhibition · From the archive
+                        </span>
+                      )}
                       <span className="mt-1 block font-label text-[7px] font-semibold uppercase tracking-[0.1em] text-chalk-600 lg:text-[8px] lg:tracking-[0.12em]">
                         On {entry.entry_minute}&apos; · {fmtMultiplier(entry.multiplier)}
                       </span>

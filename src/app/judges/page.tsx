@@ -35,6 +35,9 @@ export default async function JudgesPage() {
           Each button below replays genuine TxLINE data, every goal and VAR call, through the exact
           pipeline the live feed uses.
         </p>
+        <p className="font-label text-[11px] font-semibold uppercase tracking-[0.14em] text-chalk-500">
+          Exhibition matches. Your career remembers them; the table does not.
+        </p>
       </header>
 
       <JudgesReplays listings={listings} />

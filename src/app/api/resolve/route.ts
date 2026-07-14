@@ -17,6 +17,7 @@ import { supabase } from "@/lib/server/supabase";
 import { currentPlayer } from "@/lib/server/playerAuth";
 import { buildReportFacts, generateMatchReport } from "@/lib/server/report";
 import { evaluateBadges } from "@/lib/career/badges";
+import { isBundledReplay } from "@/lib/playability";
 import type { EntryRow } from "@/lib/entry";
 
 export const runtime = "nodejs";
@@ -123,6 +124,8 @@ export async function POST(req: NextRequest) {
         breakdown: window.breakdown,
         report,
         report_source: reportSource,
+        // Entries on the bundled replay fixtures are exhibitions.
+        exhibition: isBundledReplay(entry.fixture_id),
       })
       .eq("id", entry.id)
       .is("resolved_at", null)
@@ -141,13 +144,24 @@ export async function POST(req: NextRequest) {
     }
 
     // Badge evaluation against the resolved entry. Appearances counts
-    // resolved entries including this one.
-    const { count } = await supabase()
-      .from("entries")
-      .select("id", { count: "exact", head: true })
-      .eq("player_id", player.id)
-      .not("resolved_at", "is", null);
-    const appearances = count ?? 1;
+    // resolved entries including this one (any kind, for the debut); the
+    // live count gates the live-only badges. Both include this entry,
+    // which was already written above with its exhibition flag.
+    const isExhibition = isBundledReplay(entry.fixture_id);
+    const [{ count: totalCount }, { count: liveCount }] = await Promise.all([
+      supabase()
+        .from("entries")
+        .select("id", { count: "exact", head: true })
+        .eq("player_id", player.id)
+        .not("resolved_at", "is", null),
+      supabase()
+        .from("entries")
+        .select("id", { count: "exact", head: true })
+        .eq("player_id", player.id)
+        .not("resolved_at", "is", null)
+        .eq("exhibition", false),
+    ]);
+    const appearances = totalCount ?? 1;
 
     const earned = evaluateBadges(
       {
@@ -159,7 +173,8 @@ export async function POST(req: NextRequest) {
         final_score_opp: updated.final_score_opp ?? 0,
         breakdown: updated.breakdown ?? [],
       },
-      appearances
+      appearances,
+      { exhibition: isExhibition, liveAppearances: liveCount ?? 0 }
     );
 
     let newBadges: string[] = [];

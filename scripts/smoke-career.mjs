@@ -149,36 +149,44 @@ async function main() {
   if (career0.body.record.appearances !== 0) throw new Error("fresh career not empty");
   log(`fresh career: 0 appearances, ${career0.body.badges.filter((b) => b.earnedAt).length} badges earned`);
 
-  // 2. Match one: France v Morocco as Morocco
+  // NOTE: fixtures 18209181 and 18202783 are bundled replays, so their
+  // entries are EXHIBITIONS: the full loop runs (enter, resolve, report),
+  // First Whistle can be earned on the debut, but they never touch a
+  // competitive number. This smoke asserts exactly that.
+
+  // 2. Match one: France v Morocco as Morocco (exhibition)
   const m1 = await playMatch(18209181, 2, "match one");
   if (!m1.newBadges.includes("first_whistle")) throw new Error("First Whistle not earned on debut");
+  if (m1.resolved.exhibition !== true) throw new Error("replay entry should be flagged exhibition");
 
   const career1 = await api("/api/career");
   const r1 = career1.body.record;
   log(
-    `career after match one: apps ${r1.appearances}, impact ${r1.impactRating}, total ${r1.totalPoints}, avg mult ${r1.averageMultiplier?.toFixed(2)}, form [${r1.form.join("")}]`
+    `career after match one: apps ${r1.appearances}, impact ${r1.impactRating}, total ${r1.totalPoints}, form [${r1.form.join("")}] (exhibition, so all competitive numbers stay empty)`
   );
-  if (r1.appearances !== 1) throw new Error("appearances should be 1");
-  if (r1.impactRating !== m1.resolved.final_points) throw new Error("impact rating should equal the single final score");
+  if (r1.appearances !== 0) throw new Error("exhibition entry must NOT count as a competitive appearance");
+  if (r1.impactRating !== null) throw new Error("exhibition entry must not move Impact Rating");
+  if (career1.body.history.length !== 1 || career1.body.history[0].exhibition !== true) {
+    throw new Error("the exhibition entry must appear in history, tagged");
+  }
 
-  // 3. Match two: Switzerland v Colombia as Switzerland
+  // 3. Match two: Switzerland v Colombia as Switzerland (exhibition)
   const m2 = await playMatch(18202783, 1, "match two");
 
   const career2 = await api("/api/career");
   const r2 = career2.body.record;
   log(
-    `career after match two: apps ${r2.appearances}, impact ${r2.impactRating}, total ${r2.totalPoints}, avg mult ${r2.averageMultiplier?.toFixed(2)}, form [${r2.form.join("")}]`
+    `career after match two: apps ${r2.appearances}, impact ${r2.impactRating}, total ${r2.totalPoints}, form [${r2.form.join("")}]`
   );
-  if (r2.appearances !== 2) throw new Error("appearances should be 2");
-  const expectedImpact = (m1.resolved.final_points + m2.resolved.final_points) / 2;
-  if (Math.abs(r2.impactRating - expectedImpact) > 1e-9) {
-    throw new Error(`impact rating ${r2.impactRating} != expected ${expectedImpact}`);
-  }
-  if (r2.form.length !== 2) throw new Error("form should have two results");
+  if (r2.appearances !== 0) throw new Error("two exhibitions still count as zero competitive appearances");
+  if (r2.form.length !== 0) throw new Error("exhibition results must not fill form");
 
   const earned = career2.body.badges.filter((b) => b.earnedAt).map((b) => b.key);
-  log(`cabinet: earned [${earned.join(", ")}], locked [${career2.body.badges.filter((b) => !b.earnedAt).map((b) => b.key).join(", ")}]`);
-  log(`history rows: ${career2.body.history.length}, each with report: ${career2.body.history.every((h) => !!h.report)}`);
+  if (earned.length !== 1 || earned[0] !== "first_whistle") {
+    throw new Error(`exhibitions should earn only First Whistle, got [${earned.join(", ")}]`);
+  }
+  log(`cabinet: earned [${earned.join(", ")}] (First Whistle only, from the exhibition debut)`);
+  log(`history rows: ${career2.body.history.length}, all exhibition: ${career2.body.history.every((h) => h.exhibition === true)}, each with report: ${career2.body.history.every((h) => !!h.report)}`);
 
   log("ALL PHASE 2 SMOKE CHECKS PASSED");
   log(`persistence check: restart the server, then run`);

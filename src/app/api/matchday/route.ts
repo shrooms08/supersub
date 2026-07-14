@@ -122,7 +122,7 @@ export async function GET() {
   // Legendary Entries: highest multiplier among won windows.
   const playerById = new Map((players ?? []).map((p) => [p.id, p]));
   const legendary: LegendaryRow[] = (entries ?? [])
-    .filter((e) => windowResult(e.breakdown) === "W")
+    .filter((e) => e.exhibition !== true && windowResult(e.breakdown) === "W")
     .sort((a, b) => b.multiplier - a.multiplier)
     .slice(0, 3)
     .map((e) => {
@@ -144,8 +144,12 @@ export async function GET() {
   if (viewer) {
     const mine = byPlayer.get(viewer.id) ?? [];
     const record = careerRecord(mine);
+    // Results feed the bench card strips and the viewer's live mini-stats,
+    // so exhibition entries are left out here too; they live in the career
+    // match history instead.
     const results: Record<number, FixtureResult> = {};
     for (const e of mine) {
+      if (e.exhibition === true) continue;
       results[e.fixture_id] = {
         points: e.final_points ?? 0,
         multiplier: e.multiplier,

@@ -172,5 +172,43 @@ check("6.99x is The Gamble", tierForMultiplier(6.99).name === "The Gamble");
 check("7.0x is Miracle Territory", tierForMultiplier(7.0).name === "Miracle Territory");
 check("10.0x is Miracle Territory", tierForMultiplier(10.0).name === "Miracle Territory");
 
+// Exhibition rule: First Whistle on any debut, every other badge live-only.
+const exhibitionMiracle = {
+  win_prob_at_entry: 0.05,
+  breakdown: [goalFor(80)], // a won window that would be Miracle Worker if live
+};
+check(
+  "exhibition debut still earns First Whistle",
+  evaluateBadges(entry(exhibitionMiracle), 1, { exhibition: true, liveAppearances: 0 }).includes(
+    "first_whistle"
+  )
+);
+check(
+  "exhibition entry earns NOTHING but First Whistle (no Miracle Worker)",
+  !evaluateBadges(entry(exhibitionMiracle), 1, { exhibition: true, liveAppearances: 0 }).includes(
+    "miracle_worker"
+  )
+);
+check(
+  "exhibition entry does not earn Iron Nerve at 90'",
+  !evaluateBadges(entry({ entry_minute: 90 }), 2, { exhibition: true, liveAppearances: 0 }).includes(
+    "iron_nerve"
+  )
+);
+check(
+  "Ever Present needs 5 LIVE appearances (exhibitions do not count)",
+  !evaluateBadges(entry({}), 6, { exhibition: false, liveAppearances: 4 }).includes("ever_present")
+);
+check(
+  "Ever Present earned on the 5th LIVE appearance even with exhibitions in the total",
+  evaluateBadges(entry({}), 8, { exhibition: false, liveAppearances: 5 }).includes("ever_present")
+);
+check(
+  "a live entry still earns its badges normally under the new signature",
+  evaluateBadges(entry({ entry_minute: 88 }), 1, { exhibition: false, liveAppearances: 1 }).includes(
+    "iron_nerve"
+  )
+);
+
 console.log(failures === 0 ? "\nAll badge checks passed." : `\n${failures} CHECKS FAILED`);
 process.exit(failures === 0 ? 0 : 1);
