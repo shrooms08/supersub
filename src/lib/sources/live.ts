@@ -63,19 +63,23 @@ async function fetchScoreLog(fixtureId: number, startTime: number, now: number):
     if (e && e.fixtureId === fixtureId) bySeq.set(e.seq, e);
   };
 
-  // Sealed intervals from shortly before kickoff. Failures on individual
-  // intervals are tolerated; the snapshot still anchors cumulative state.
+  // Sealed intervals from shortly before kickoff. The whole event log of
+  // a match lives within a few hours of kickoff, so cap the sweep at
+  // kickoff + 3.5h rather than running it to "now" (for a day-old
+  // finished fixture that would be hundreds of empty interval calls; a
+  // live fixture is well under the cap, so this changes nothing there).
+  // Fetched concurrently; individual interval failures are tolerated, the
+  // snapshot still anchors cumulative state.
   const from = startTime - 10 * 60_000;
-  for (const t of sealedIntervalStarts(from, now, now)) {
-    try {
-      const batch = await txGetJson<unknown[]>(
+  const until = Math.min(now, startTime + 3.5 * 3_600_000);
+  const batches = await Promise.all(
+    sealedIntervalStarts(from, until, now).map((t) =>
+      txGetJson<unknown[]>(
         `/scores/updates/${epochDay(t)}/${hourOfDay(t)}/${fiveMinInterval(t)}?fixtureId=${fixtureId}`
-      );
-      batch.forEach(addRaw);
-    } catch {
-      // tolerated
-    }
-  }
+      ).catch(() => [] as unknown[])
+    )
+  );
+  for (const batch of batches) batch.forEach(addRaw);
 
   try {
     const snapshot = await txGetJson<unknown[]>(`/scores/snapshot/${fixtureId}`);
@@ -96,17 +100,19 @@ async function fetchOddsLog(fixtureId: number, startTime: number, now: number): 
     }
   };
 
+  // Same cap and concurrency as the score log: the odds curve is bounded
+  // to kickoff + 3.5h, so a finished fixture never sweeps a day of empty
+  // intervals, and a live one is under the cap and unchanged.
   const from = startTime - 30 * 60_000;
-  for (const t of sealedIntervalStarts(from, now, now)) {
-    try {
-      const batch = await txGetJson<unknown[]>(
+  const until = Math.min(now, startTime + 3.5 * 3_600_000);
+  const batches = await Promise.all(
+    sealedIntervalStarts(from, until, now).map((t) =>
+      txGetJson<unknown[]>(
         `/odds/updates/${epochDay(t)}/${hourOfDay(t)}/${fiveMinInterval(t)}?fixtureId=${fixtureId}`
-      );
-      batch.forEach(addRaw);
-    } catch {
-      // tolerated
-    }
-  }
+      ).catch(() => [] as unknown[])
+    )
+  );
+  for (const batch of batches) batch.forEach(addRaw);
 
   // Snapshot for the freshest lines. Observed flake: [] right after an
   // interval rollover. One retry, then move on; the SSE stream will fill
