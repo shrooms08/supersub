@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/server/supabase";
 import { currentPlayer } from "@/lib/server/playerAuth";
-import { loadFixtureFold, resolveEntryAgainst } from "@/lib/server/resolve-entry";
+import { resolveFixtureEntries } from "@/lib/server/resolve-entry";
 import type { EntryRow } from "@/lib/entry";
 
 export const runtime = "nodejs";
@@ -59,21 +59,32 @@ export async function POST(req: NextRequest) {
   if (entry.resolved_at) return NextResponse.json({ entry, newBadges: [] });
 
   try {
-    // Resolution now lives in one server-side path (shared with the
-    // resolution sweep), so an entry resolves identically whether a
-    // watcher triggers it here or the cron finds it later.
-    const { regulationState, finished } = await loadFixtureFold(body.mode ?? entry.mode, fixtureId!, {
-      speed: body.speed,
-      anchor: body.anchor,
-    });
+    // Resolve the WHOLE fixture from one fold, not just this player's
+    // entry: whoever reaches full time first settles everyone's entries
+    // on the fixture, so resolution no longer depends on each entry
+    // owner watching to the whistle. The daily cron sweep is the backstop
+    // for fixtures nobody watched. Shared, deterministic, idempotent.
+    const { finished, resolvedByPlayer } = await resolveFixtureEntries(
+      fixtureId!,
+      body.mode ?? entry.mode,
+      { speed: body.speed, anchor: body.anchor }
+    );
     if (!finished) {
       return NextResponse.json(
         { error: "The whistle has not gone yet; nothing to resolve." },
         { status: 409 }
       );
     }
-    const { entry: updated, newBadges } = await resolveEntryAgainst(entry, player, regulationState);
-    return NextResponse.json({ entry: updated, newBadges });
+    const mine = resolvedByPlayer.get(player.id);
+    if (mine) return NextResponse.json({ entry: mine.entry, newBadges: mine.newBadges });
+    // Already resolved before this call (e.g. by an earlier watcher): the
+    // fixture sweep only touches unresolved rows, so read the settled one.
+    const { data: current } = await supabase()
+      .from("entries")
+      .select()
+      .eq("id", entry.id)
+      .single<EntryRow>();
+    return NextResponse.json({ entry: current, newBadges: [] });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ error: message }, { status: 502 });

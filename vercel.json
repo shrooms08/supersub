@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/resolve",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 2 * * *"
     }
   ]
 }

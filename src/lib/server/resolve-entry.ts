@@ -152,67 +152,91 @@ export async function resolveEntryAgainst(
   return { entry: updated, newBadges };
 }
 
+// Resolve EVERY unresolved entry on one fixture from a single fold. This
+// is the core of "resolution does not depend on who is watching": when
+// any watcher of a fixture reaches full time and calls /api/resolve, the
+// whole fixture's entries resolve, not just theirs. The daily cron sweep
+// is the backstop for fixtures nobody watched to the whistle.
+export async function resolveFixtureEntries(
+  fixtureId: number,
+  mode: string,
+  opts: { speed?: number; anchor?: number } = {}
+): Promise<{
+  finished: boolean;
+  resolvedByPlayer: Map<string, { entry: EntryRow; newBadges: string[] }>;
+  errors: { entryId: string; message: string }[];
+}> {
+  const errors: { entryId: string; message: string }[] = [];
+  const resolvedByPlayer = new Map<string, { entry: EntryRow; newBadges: string[] }>();
+
+  const { regulationState, finished } = await loadFixtureFold(mode, fixtureId, opts);
+  if (!finished) return { finished: false, resolvedByPlayer, errors };
+
+  const { data: entries } = await supabase()
+    .from("entries")
+    .select("*, players(id, name, position, shirt_number, created_at)")
+    .eq("fixture_id", fixtureId)
+    .is("resolved_at", null)
+    .returns<(EntryRow & { players: PlayerRow | null })[]>();
+
+  for (const e of entries ?? []) {
+    const player = e.players;
+    if (!player) {
+      errors.push({ entryId: e.id, message: "no player row" });
+      continue;
+    }
+    try {
+      resolvedByPlayer.set(e.player_id, await resolveEntryAgainst(e, player, regulationState));
+    } catch (err) {
+      errors.push({ entryId: e.id, message: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  return { finished: true, resolvedByPlayer, errors };
+}
+
 export interface SweepResult {
   resolved: { entryId: string; fixtureId: number; playerName: string; points: number }[];
   skippedLive: number[]; // fixture ids still in play
   errors: { entryId: string; message: string }[];
 }
 
-// The sweep: find every unresolved entry, group by fixture, fold each
-// finished fixture once, and resolve its entries. Fixtures still in play
-// are left for a later run. This is what makes resolution independent of
-// whether anyone was watching.
+// The scheduled sweep: find every unresolved entry, and resolve each
+// distinct finished fixture once. The backstop that guarantees an entry
+// resolves even when nobody watched the fixture to full time.
 export async function resolveFinishedEntries(): Promise<SweepResult> {
   const result: SweepResult = { resolved: [], skippedLive: [], errors: [] };
 
   const { data: unresolved } = await supabase()
     .from("entries")
-    .select("*, players(id, name, position, shirt_number, created_at)")
+    .select("id, fixture_id, mode")
     .is("resolved_at", null)
-    .returns<(EntryRow & { players: PlayerRow | null })[]>();
+    .returns<{ id: string; fixture_id: number; mode: string }[]>();
   if (!unresolved || unresolved.length === 0) return result;
 
-  // Group by fixture (and mode, so a fixture is folded once).
-  const byFixture = new Map<string, (EntryRow & { players: PlayerRow | null })[]>();
+  // One fold per distinct (fixture, mode).
+  const fixtures = new Map<string, { fixtureId: number; mode: string }>();
   for (const e of unresolved) {
-    const key = `${e.fixture_id}:${e.mode}`;
-    const list = byFixture.get(key) ?? [];
-    list.push(e);
-    byFixture.set(key, list);
+    fixtures.set(`${e.fixture_id}:${e.mode}`, { fixtureId: e.fixture_id, mode: e.mode });
   }
 
-  for (const [key, entries] of byFixture) {
-    const { fixture_id, mode } = entries[0];
-    let fold: Awaited<ReturnType<typeof loadFixtureFold>>;
+  for (const { fixtureId, mode } of fixtures.values()) {
     try {
-      fold = await loadFixtureFold(mode, fixture_id);
-    } catch (err) {
-      for (const e of entries) {
-        result.errors.push({ entryId: e.id, message: `fold ${key}: ${err instanceof Error ? err.message : err}` });
-      }
-      continue;
-    }
-    if (!fold.finished) {
-      result.skippedLive.push(fixture_id);
-      continue;
-    }
-    for (const e of entries) {
-      const player = e.players;
-      if (!player) {
-        result.errors.push({ entryId: e.id, message: "no player row" });
+      const { finished, resolvedByPlayer, errors } = await resolveFixtureEntries(fixtureId, mode);
+      result.errors.push(...errors);
+      if (!finished) {
+        result.skippedLive.push(fixtureId);
         continue;
       }
-      try {
-        const { entry: resolved } = await resolveEntryAgainst(e, player, fold.regulationState);
+      for (const { entry } of resolvedByPlayer.values()) {
         result.resolved.push({
-          entryId: e.id,
-          fixtureId: fixture_id,
-          playerName: player.name,
-          points: resolved.final_points ?? 0,
+          entryId: entry.id,
+          fixtureId,
+          playerName: "",
+          points: entry.final_points ?? 0,
         });
-      } catch (err) {
-        result.errors.push({ entryId: e.id, message: err instanceof Error ? err.message : String(err) });
       }
+    } catch (err) {
+      result.errors.push({ entryId: `fixture:${fixtureId}`, message: err instanceof Error ? err.message : String(err) });
     }
   }
 
