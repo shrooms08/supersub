@@ -94,6 +94,11 @@ function Row({ e, t }: { e: TimelineEvent; t: MatchTimeline }) {
           <span className="font-label text-[7px] font-bold uppercase tracking-[0.12em] text-chalk-500">
             {chip.label}
           </span>
+          {e.penalty && !struck && (
+            <span className="shrink-0 rounded-sm bg-pitch-700 px-1.5 py-0.5 font-label text-[8px] font-bold uppercase tracking-[0.14em] text-chalk-300">
+              Penalty
+            </span>
+          )}
           {struck && (
             <span className="shrink-0 rounded-sm bg-pitch-700 px-1.5 py-0.5 font-label text-[8px] font-bold uppercase tracking-[0.14em] text-chalk-300">
               VAR: overturned
@@ -114,6 +119,42 @@ function Row({ e, t }: { e: TimelineEvent; t: MatchTimeline }) {
         </span>
       </span>
     </li>
+  );
+}
+
+// When a side's goal total exceeds every goal we could place, coverage
+// opened after those goals: they are in the score, not the timeline. This
+// annotates the gap so the score reads as explained, not broken. It never
+// invents a scorer or a minute for the missing goal.
+function PreCoverageBanner({ timeline }: { timeline: MatchTimeline }) {
+  const { p1, p2 } = timeline.preCoverage;
+  if (p1 === 0 && p2 === 0) return null;
+  const parts: string[] = [];
+  if (p1 > 0) parts.push(`${timeline.participant1} scored ${p1} ${p1 === 1 ? "goal" : "goals"}`);
+  if (p2 > 0) parts.push(`${timeline.participant2} scored ${p2} ${p2 === 1 ? "goal" : "goals"}`);
+  return (
+    <div
+      className="mb-1 mt-1 flex items-center gap-3 rounded-lg px-3 py-2.5"
+      style={{ background: "rgba(200,255,0,.06)", border: "1px solid rgba(200,255,0,.18)" }}
+    >
+      <span
+        aria-hidden
+        className="grid h-7 w-7 flex-none place-items-center rounded-[7px] font-label text-[11px] font-bold"
+        style={{ background: "rgba(200,255,0,.14)", color: "#c8ff00" }}
+      >
+        !
+      </span>
+      <span className="min-w-0">
+        <span className="block font-label text-[8px] font-bold uppercase tracking-[0.14em] text-volt">
+          Earlier goals not in feed
+        </span>
+        <span className="mt-0.5 block font-label text-[11px] leading-[1.35] text-chalk-300">
+          Coverage opened mid-match: {parts.join(" and ")} before it.{" "}
+          {p1 + p2 === 1 ? "It is" : "They are"} in the final score with no event below; counted, but
+          no scorer or minute is on record.
+        </span>
+      </span>
+    </div>
   );
 }
 
@@ -175,6 +216,7 @@ export function MatchReport({ timeline }: { timeline: MatchTimeline }) {
 
       {/* Timeline */}
       <section aria-label="Timeline" className="panel !rounded-2xl px-4 py-2">
+        <PreCoverageBanner timeline={timeline} />
         {timeline.events.length === 0 ? (
           <p className="py-8 text-center font-label text-sm text-chalk-500">
             No timeline events on record for this match.

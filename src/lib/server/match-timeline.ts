@@ -53,6 +53,7 @@ export interface TimelineEvent {
   minute: number | null;
   team: 1 | 2 | null;
   discarded?: boolean;
+  penalty?: boolean; // a goal scored from a penalty (a penalty_outcome)
   playerName?: string | null;
   secondaryName?: string | null; // substitution: the player coming off
   label?: string; // period label
@@ -74,6 +75,11 @@ export interface MatchTimeline {
   // are cached only briefly (see the cache note).
   live: boolean;
   currentMinute: number | null;
+  // Goals that are in the header total but have NO event of any kind in
+  // the log, per side: the feed's coverage opened after they were scored.
+  // The timeline annotates the gap so the score reconciles; a scorer or
+  // minute for the missing goal is never invented.
+  preCoverage: { p1: number; p2: number };
   events: TimelineEvent[];
 }
 
@@ -297,6 +303,33 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
       playerName: nameFor(num(pick(e, "Data"), "PlayerId")),
     });
   }
+  // Penalty goals: a scored penalty is recorded as a penalty_outcome, not
+  // a goal action, so render it here or the score would not reconcile
+  // (France v Spain: the 22' penalty). In-play only, never a shootout
+  // (those are display-only and outside the header score); skipped if a
+  // goal event already exists for the same side and minute.
+  const goalKeys = new Set(
+    items.filter((i) => i.kind === "goal" && i.team).map((i) => `${i.team}:${i.minute}`)
+  );
+  for (const e of confirmedById(raw, "penalty_outcome").values()) {
+    const data = pick(e, "Data");
+    if (str(data, "Outcome") !== "Scored") continue;
+    const sid = num(e, "StatusId") ?? num(data, "StatusId");
+    if (sid === 11 || sid === 12 || sid === 13) continue; // shootout
+    if (pick(e, "Clock") === undefined) continue; // no in-play clock
+    const team = num(e, "Participant");
+    const minute = minuteOf(e);
+    if (team && goalKeys.has(`${team}:${minute}`)) continue;
+    items.push({
+      kind: "goal",
+      penalty: true,
+      id: num(e, "Id"),
+      seq: num(e, "Seq") ?? 0,
+      minute,
+      team: team === 1 || team === 2 ? team : null,
+      playerName: nameFor(num(data, "PlayerId")),
+    });
+  }
   // Cards.
   for (const action of ["yellow_card", "red_card"] as const) {
     for (const e of confirmedById(raw, action).values()) {
@@ -354,6 +387,19 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
     }
   }
 
+  // Pre-coverage goals: compare the goals we could render per side (goal
+  // events plus penalty goals, net of VAR discards) to the header total.
+  // A positive remainder is a goal that exists only in the cumulative
+  // score, with no event of any kind, because coverage opened after it.
+  const renderedGoals = { p1: 0, p2: 0 };
+  for (const i of items) {
+    if (i.kind === "goal" && i.team) renderedGoals[i.team === 1 ? "p1" : "p2"] += 1;
+  }
+  const preCoverage = {
+    p1: Math.max(0, state.score.p1 - renderedGoals.p1),
+    p2: Math.max(0, state.score.p2 - renderedGoals.p2),
+  };
+
   // Chronological, kickoff first; de-dupe identical consecutive period
   // breaks (the feed can emit a status more than once).
   items.sort((a, b) => a.seq - b.seq);
@@ -377,6 +423,7 @@ function build(fixtureId: number, raw: Raw[], fixtureMeta: Raw): MatchTimeline {
     hasRoster: roster.size > 0,
     live,
     currentMinute: live ? stateMinute(state, now) : null,
+    preCoverage,
     events: events2,
   };
 }
