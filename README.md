@@ -98,6 +98,10 @@ Tailwind, Supabase (players, entries, badges; one entry per player per
 fixture enforced by constraint), Anthropic API (match reports), Vercel
 (single region, `fra1`). No other services.
 
+Full verification trail: `docs/verification/` - every phase was gated
+with evidence before merge, including a live-fixture verification run and
+a scoring audit against real match data.
+
 ## Running locally
 
 ```
@@ -111,8 +115,8 @@ npm run dev
 Replay mode works offline out of the box: France v Morocco (18209181)
 and Argentina v Egypt (18202701) ship in `data/replay/`. Verification:
 `npm run test:fold`, `npm run test:badges`, `npm run smoke`,
-`npm run smoke:career` (see SMOKE.md, SMOKE2.md, SMOKE3.md for captured
-runs). Demo choreography lives in DEMO.md.
+`npm run smoke:career` (captured runs in `docs/verification/`: SMOKE.md,
+SMOKE2.md, SMOKE3.md). Demo choreography lives in DEMO.md.
 
 ## Replay mode, honestly
 
