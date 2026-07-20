@@ -4,6 +4,9 @@
 your choosing; the worse it looks when you step on, the bigger the
 multiplier you carry to the final whistle.**
 
+**Live:** https://supersub-tau.vercel.app · **Judges start here:**
+https://supersub-tau.vercel.app/judges
+
 ## Thirty seconds
 
 Super Sub turns live football into a one-decision game. You watch a
@@ -91,6 +94,24 @@ targets service level 12 (real-time) with a funded wallet. The app
 itself consumes the resulting `TXLINE_JWT` and `TXLINE_API_TOKEN` via
 env vars; the guest JWT renews itself on 401.
 
+## Business model
+
+The core loop stays free to play: picking a side, entering, and building
+a career cost almost nothing per user, and the artifact they produce (the
+newspaper match report, written about you by name) is the growth loop.
+The first paid layer is a season pass scoped to a tournament or league,
+selling cosmetic depth (kit and crest customization, report tone packs,
+cabinet themes) and extended career history and stat splits; none of it
+touches scoring, so paying never moves a multiplier and the competitive
+core stays credible. The second is sponsored moments: a broadcaster or
+bookmaker brands the entry instant itself ("The 78th Minute, presented by
+X") and the resolved report card, native inventory at the seconds of peak
+attention. Because the engine is fixture-agnostic, the same product runs
+year-round on any league the feed covers, not just a World Cup summer.
+A regulated stake-on-yourself pool is the obvious later path and is
+deliberately NOT in this build; it would ship only behind the appropriate
+licensing, geofencing, and age gates.
+
 ## Stack
 
 Next.js 14 (App Router, TypeScript, route handlers only on the server),
@@ -116,7 +137,8 @@ Replay mode works offline out of the box: France v Morocco (18209181)
 and Argentina v Egypt (18202701) ship in `data/replay/`. Verification:
 `npm run test:fold`, `npm run test:badges`, `npm run smoke`,
 `npm run smoke:career` (captured runs in `docs/verification/`: SMOKE.md,
-SMOKE2.md, SMOKE3.md). Demo choreography lives in DEMO.md.
+SMOKE2.md, SMOKE3.md). Demo choreography lives in
+`docs/production/DEMO.md`.
 
 ## Replay mode, honestly
 
@@ -139,8 +161,11 @@ Judges: start at `/judges`.
   timeline anchor, so a refresh (or a request landing on a second
   instance) reconstructs the same match position. See
   `src/lib/sources/replay.ts` for the mechanism.
-- The live source's mid-match join was verified against finished and
-  pre-match fixtures; a genuinely in-play verification needs a live
-  fixture window.
+- The live source's mid-match join is verified against a genuinely
+  in-play fixture (95 events through the normalization layer, zero parse
+  failures; see `docs/verification/LIVE-VERIFY.md`). Coverage for some
+  fixtures opens mid-match, so a goal scored before it exists in the
+  score with no event row; the match report annotates that gap rather
+  than inventing a scorer.
 - Anonymous cookie identity with permissive RLS, a deliberate
   hackathon posture; tighten with real auth.
