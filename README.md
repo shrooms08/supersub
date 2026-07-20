@@ -4,8 +4,9 @@
 your choosing; the worse it looks when you step on, the bigger the
 multiplier you carry to the final whistle.**
 
-**Live:** https://supersub-tau.vercel.app · **Judges start here:**
-https://supersub-tau.vercel.app/judges
+**Live:** https://supersub-cup.vercel.app · **Demo video:**
+https://youtu.be/9n1K8SvHB_U · **Judges start here:**
+https://supersub-cup.vercel.app/judges
 
 ## Thirty seconds
 
