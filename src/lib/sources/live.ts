@@ -25,6 +25,7 @@ import {
 } from "@/lib/feed/normalize";
 import type { Fixture, MatchEvent, OddsUpdate } from "@/lib/feed/types";
 import { phaseFromKickoff } from "@/lib/state/fold";
+import { isWorldCup } from "@/lib/worldcup";
 import {
   epochDay,
   fiveMinInterval,
@@ -45,10 +46,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function fetchFixture(fixtureId: number): Promise<Fixture | null> {
   const lookbackDay = epochDay(Date.now()) - 13;
   const raw = await txGetJson<unknown[]>(`/fixtures/snapshot?startEpochDay=${lookbackDay}`);
+  // World Cup only: a friendly id resolves to null, so getFixture/getLog/
+  // connect all reject it the same way an unknown id does.
   return (
     raw
       .map(normalizeFixture)
-      .find((f): f is Fixture => f !== null && f.fixtureId === fixtureId) ?? null
+      .find((f): f is Fixture => f !== null && f.fixtureId === fixtureId && isWorldCup(f)) ?? null
   );
 }
 
@@ -143,6 +146,8 @@ export function createLiveSource(): MatchSource {
       return raw
         .map(normalizeFixture)
         .filter((f): f is Fixture => f !== null)
+        // World Cup only: Friendlies never appear in a fixture listing.
+        .filter(isWorldCup)
         .map((fixture) => ({
           fixture,
           phase: phaseFromKickoff(fixture, now),

@@ -182,6 +182,7 @@ export function normalizeFixture(raw: unknown): Fixture | null {
     fixtureId,
     startTime,
     competition: str(raw, "Competition") ?? "",
+    competitionId: num(raw, "CompetitionId"),
     participant1,
     participant2,
     participant1Id: num(raw, "Participant1Id"),

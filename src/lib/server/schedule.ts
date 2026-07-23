@@ -15,6 +15,7 @@ import { normalizeFixture } from "@/lib/feed/normalize";
 import type { Fixture, Phase } from "@/lib/feed/types";
 import { epochDay, txGetJson } from "@/lib/server/txline";
 import { reportAvailable } from "@/lib/server/match-timeline";
+import { isWorldCup } from "@/lib/worldcup";
 
 // Kickoff to roughly full time plus 30 minutes: the window a fixture is
 // treated as LIVE. 150 minutes safely spans 90 plus stoppage, a
@@ -162,6 +163,8 @@ async function buildSchedule(now: number): Promise<SchedulePayload> {
   const fixtures = raw
     .map(normalizeFixture)
     .filter((f): f is Fixture => f !== null)
+    // World Cup only: Friendlies never reach the bench.
+    .filter(isWorldCup)
     .map((fixture) => {
       const { phase, live } = phaseFor(fixture.startTime, now);
       return {

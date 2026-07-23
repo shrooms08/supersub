@@ -21,6 +21,7 @@ import type { Fixture } from "@/lib/feed/types";
 import { epochDay, txGetJson } from "@/lib/server/txline";
 import { reportAvailable } from "@/lib/server/match-timeline";
 import { canonicalFinalScore, type FinalScore, type ResultFixture } from "@/lib/server/schedule";
+import { isWorldCup } from "@/lib/worldcup";
 
 // Kickoff to full time plus 30 minutes: past this a fixture is finished
 // (matches the schedule's heuristic; the feed carries no final-whistle).
@@ -106,6 +107,8 @@ async function finishedDays(now: number): Promise<{ days: DayMeta[]; total: numb
   const finished = raw
     .map(normalizeFixture)
     .filter((f): f is Fixture => f !== null)
+    // World Cup only: Friendlies never reach the results history.
+    .filter(isWorldCup)
     .filter((f) => now >= f.startTime + LIVE_WINDOW_MS && !sameUtcDay(f.startTime, now));
 
   const byDay = new Map<number, Fixture[]>();

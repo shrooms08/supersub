@@ -28,6 +28,7 @@ import {
   txGetJson,
 } from "@/lib/server/txline";
 import { isBundledReplay } from "@/lib/playability";
+import { WORLD_CUP_COMPETITION_ID } from "@/lib/worldcup";
 import type { MatchEvent } from "@/lib/feed/types";
 
 const BUNDLE_DIR = path.join(process.cwd(), "data", "replay");
@@ -157,7 +158,11 @@ async function fetchRealRaw(
   } catch {
     return null;
   }
-  const fixture = fixtures.find((f) => num(f, "FixtureId") === fixtureId);
+  // World Cup only: a friendly (or unknown) id has no buildable report, so
+  // the report page degrades to its "No report on file" panel.
+  const fixture = fixtures.find(
+    (f) => num(f, "FixtureId") === fixtureId && num(f, "CompetitionId") === WORLD_CUP_COMPETITION_ID
+  );
   if (!fixture) return null;
   const startTime = num(fixture, "StartTime") ?? Date.now();
   const now = Date.now();

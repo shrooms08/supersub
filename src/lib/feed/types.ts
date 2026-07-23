@@ -9,6 +9,9 @@ export interface Fixture {
   fixtureId: number;
   startTime: number;
   competition: string;
+  // Feed competition id (72 is the World Cup). Undefined when the raw
+  // payload omits it, e.g. a bundled replay's reconstructed fixture.
+  competitionId?: number;
   participant1: string;
   participant2: string;
   participant1Id?: number;

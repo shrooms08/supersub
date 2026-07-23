@@ -28,6 +28,7 @@ records, in order.
 - [SMOKE-FINAL.md](SMOKE-FINAL.md) - Flags in the match scoreboard and resolved player names in the live ticker.
 - [SMOKE-DISPLAY.md](SMOKE-DISPLAY.md) - Rendering scored penalties in the match report and a pre-coverage marker for goals that predate the feed's coverage.
 - [SMOKE-HISTORY.md](SMOKE-HISTORY.md) - Full tournament history: the RESULTS tab carries every finished fixture grouped by UTC day, newest first, with a day-list cache plus per-fixture canonical-score cache and day pagination (cold and warm timings measured).
+- [SMOKE-WORLDCUP.md](SMOKE-WORLDCUP.md) - World Cup only: Friendlies (competition 430) filtered out of the bench, results history, and every match path at the fixture source; a direct friendly URL degrades gracefully (results count 152 to 106).
 
 ## Live and production checks
 
