@@ -29,6 +29,7 @@ records, in order.
 - [SMOKE-DISPLAY.md](SMOKE-DISPLAY.md) - Rendering scored penalties in the match report and a pre-coverage marker for goals that predate the feed's coverage.
 - [SMOKE-HISTORY.md](SMOKE-HISTORY.md) - Full tournament history: the RESULTS tab carries every finished fixture grouped by UTC day, newest first, with a day-list cache plus per-fixture canonical-score cache and day pagination (cold and warm timings measured).
 - [SMOKE-WORLDCUP.md](SMOKE-WORLDCUP.md) - World Cup only: Friendlies (competition 430) filtered out of the bench, results history, and every match path at the fixture source; a direct friendly URL degrades gracefully (results count 152 to 106).
+- [SMOKE-BRACKET.md](SMOKE-BRACKET.md) - Knockout bracket: the tournament tree (Round of 32 to Final plus the champion) with stage names inferred from fixture counts, a deliberate vertical-rounds layout at 390px and the full horizontal tree on desktop, group letters honestly omitted because the feed does not expose them.
 
 ## Live and production checks
 

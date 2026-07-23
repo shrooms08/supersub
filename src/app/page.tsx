@@ -11,6 +11,7 @@
 // own rail even if the live feed is down: they are the judges' path.
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Masthead } from "@/components/Masthead";
 import { PlayerCard } from "@/components/PlayerCard";
@@ -343,6 +344,18 @@ function BenchInner() {
                   counts={{ today: today.length, results: resultsTotal ?? 0, upcoming: upcomingCount }}
                   live={liveCount > 0}
                 />
+
+                <Link
+                  href="/bracket"
+                  className="flex items-center justify-between rounded-[12px] border border-pitch-700 bg-pitch-850 px-3.5 py-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt"
+                >
+                  <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-chalk-300">
+                    Knockout bracket
+                  </span>
+                  <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-volt">
+                    View &rsaquo;
+                  </span>
+                </Link>
 
                 {!sched && !error &&
                   [0, 1].map((i) => (

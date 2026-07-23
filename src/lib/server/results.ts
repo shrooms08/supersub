@@ -65,7 +65,9 @@ function dayHeader(ts: number): string {
 
 const scoreCache = new Map<number, { at: number; score: FinalScore }>();
 
-async function cachedScore(fixtureId: number): Promise<FinalScore> {
+// Exported so the bracket view shares this cache and the RESULTS wall and
+// the bracket never fetch the same finished fixture's canonical score twice.
+export async function cachedScore(fixtureId: number): Promise<FinalScore> {
   const hit = scoreCache.get(fixtureId);
   if (hit && Date.now() - hit.at < SCORE_TTL_MS) return hit.score;
   const score =

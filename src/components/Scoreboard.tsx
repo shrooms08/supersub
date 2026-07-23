@@ -9,11 +9,12 @@
 import type { Fixture } from "@/lib/feed/types";
 import { stateMinute, type MatchState } from "@/lib/state/fold";
 import { flagFor } from "@/lib/flags";
+import { teamCode } from "@/lib/teams";
 import { PhaseBadge } from "./PhaseBadge";
 
-export function teamCode(name: string): string {
-  return name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "---";
-}
+// Re-exported so existing importers of "@/components/Scoreboard" keep
+// working; the implementation lives in the server-safe lib.
+export { teamCode };
 
 function periodLabel(state: MatchState | null): string {
   if (!state) return "Kickoff soon";

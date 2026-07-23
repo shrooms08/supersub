@@ -12,6 +12,10 @@ export interface Fixture {
   // Feed competition id (72 is the World Cup). Undefined when the raw
   // payload omits it, e.g. a bundled replay's reconstructed fixture.
   competitionId?: number;
+  // Feed FixtureGroupId: an opaque numeric id that partitions a tournament
+  // into stages (used by the knockout bracket). It carries NO stage or group
+  // name; stage identity is inferred from fixture counts, not this number.
+  competitionGroupId?: number;
   participant1: string;
   participant2: string;
   participant1Id?: number;
