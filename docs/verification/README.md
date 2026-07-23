@@ -30,6 +30,7 @@ records, in order.
 - [SMOKE-HISTORY.md](SMOKE-HISTORY.md) - Full tournament history: the RESULTS tab carries every finished fixture grouped by UTC day, newest first, with a day-list cache plus per-fixture canonical-score cache and day pagination (cold and warm timings measured).
 - [SMOKE-WORLDCUP.md](SMOKE-WORLDCUP.md) - World Cup only: Friendlies (competition 430) filtered out of the bench, results history, and every match path at the fixture source; a direct friendly URL degrades gracefully (results count 152 to 106).
 - [SMOKE-BRACKET.md](SMOKE-BRACKET.md) - Knockout bracket: the tournament tree (Round of 32 to Final plus the champion) with stage names inferred from fixture counts, a deliberate vertical-rounds layout at 390px and the full horizontal tree on desktop, group letters honestly omitted because the feed does not expose them.
+- [SMOKE-BRACKET-CARDS.md](SMOKE-BRACKET-CARDS.md) - Bracket card sizing: cards widened and heightened (measured against the longest real name, "Bosnia & Herzegovina") so names no longer truncate, the pens line never wraps, and footers clear the border; tree coordinates and connector geometry recomputed from the new card size.
 - [SMOKE-BRACKET-V2.md](SMOKE-BRACKET-V2.md) - Bracket redesign: a mirrored tournament tree, two halves converging on a centred Final, with the halves threaded deterministically backward from the Final by team identity, SVG connector elbows, the champion's road in volt, and the mobile stacked-rounds fallback.
 
 ## Live and production checks

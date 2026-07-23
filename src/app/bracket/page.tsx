@@ -54,7 +54,7 @@ function TeamRow({ name, score, isWinner, decided }: { name: string; score: numb
       <span aria-hidden className="w-5 shrink-0 text-center text-sm leading-none">
         {flagFor(name) ?? ""}
       </span>
-      <span className="min-w-0 flex-1 truncate font-label text-[12px] uppercase tracking-wide">{name}</span>
+      <span className="min-w-0 flex-1 whitespace-nowrap font-label text-[12px] uppercase tracking-wide">{name}</span>
       <span className="hero-number w-4 text-right text-sm tabular-nums">{score !== null ? score : ""}</span>
     </div>
   );
@@ -73,7 +73,7 @@ function MatchCard({ f, now, onPath }: { f: BracketFixture; now: number; onPath:
       <TeamRow name={f.participant1} score={f.score ? f.score.p1 : null} isWinner={f.winner === 1} decided={decided} />
       <TeamRow name={f.participant2} score={f.score ? f.score.p2 : null} isWinner={f.winner === 2} decided={decided} />
       <div className="flex items-center justify-between gap-2 border-t border-pitch-700 pt-1">
-        <span className="font-label text-[9px] font-semibold uppercase tracking-[0.1em] text-chalk-500">
+        <span className="whitespace-nowrap font-label text-[9px] font-semibold uppercase tracking-[0.1em] text-chalk-500">
           {upcoming ? kickoff(f.startTime) : pens ? pens : f.score ? "Full time" : "Full time · no score"}
         </span>
         {f.hasReport && (
@@ -95,11 +95,18 @@ function MatchCard({ f, now, onPath }: { f: BracketFixture; now: number; onPath:
 
 // ---- desktop layout maths -------------------------------------------------
 
-const CARD_W = 144;
-const CARD_H = 60;
+// Card sized to the longest real country name in the data: "Bosnia &
+// Herzegovina" renders 154px at the 12px card font, and a team row is
+// padding(10) + flag(20) + gap(8) + name + gap(8) + score(16) + padding(10),
+// so ~226px is the floor; 238 leaves a small buffer. The height clears the
+// two team rows and the footer from the card border. All tree coordinates
+// and connector geometry below are derived from these, so widening the card
+// widens the canvas and re-places every elbow automatically.
+const CARD_W = 238;
+const CARD_H = 84;
 const COL_GAP = 38;
 const COL_W = CARD_W + COL_GAP;
-const ROW_H = 86;
+const ROW_H = 104;
 const LEAVES = 8; // per half (16 Round-of-32 matches / 2)
 const CANVAS_H = LEAVES * ROW_H; // 704
 const CENTER_X = 4 * COL_W - COL_GAP / 2 + 40; // just right of the left half's SF column
@@ -350,7 +357,7 @@ function DesktopBracket({
           </svg>
 
           {/* champion hero above the final */}
-          <div className="absolute" style={{ left: CENTER_X - 24, top: FINAL_Y - 150, width: CARD_W + 48 }}>
+          <div className="absolute" style={{ left: CENTER_X - 24, top: FINAL_Y - CARD_H / 2 - 110, width: CARD_W + 48 }}>
             <div className="flex flex-col items-center gap-1 rounded-[14px] border border-volt/40 bg-volt/10 px-3 py-3 text-center">
               <span aria-hidden className="text-2xl">{champion ? flagFor(champion.team) ?? "🏆" : "🏆"}</span>
               <span className="font-label text-[9px] font-bold uppercase tracking-[0.18em] text-volt">Champion</span>
@@ -367,7 +374,7 @@ function DesktopBracket({
 
           {/* third-place playoff, small, below the final */}
           {tree.thirdPlace && (
-            <div className="absolute" style={{ left: CENTER_X - 24, top: FINAL_Y + 70, width: CARD_W + 48 }}>
+            <div className="absolute" style={{ left: CENTER_X - 24, top: FINAL_Y + CARD_H / 2 + 26, width: CARD_W + 48 }}>
               <p className="mb-1 text-center font-label text-[9px] font-bold uppercase tracking-[0.16em] text-chalk-500">
                 Third-place playoff
               </p>
