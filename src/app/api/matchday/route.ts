@@ -47,6 +47,9 @@ export interface FixtureResult {
 }
 
 export interface MatchdayPayload {
+  // Total signed players in the instance (every row from the table query,
+  // not the capped leaderboard). Used by the end-of-tournament card.
+  playerCount: number;
   table: TableRow[];
   legendary: LegendaryRow[];
   you: {
@@ -170,6 +173,6 @@ export async function GET() {
     };
   }
 
-  const payload: MatchdayPayload = { table, legendary, you };
+  const payload: MatchdayPayload = { playerCount: (players ?? []).length, table, legendary, you };
   return NextResponse.json(payload);
 }

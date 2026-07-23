@@ -86,6 +86,47 @@ function DayHead({ label }: { label: string }) {
   );
 }
 
+// Shown in place of the empty TODAY / UPCOMING tabs once the tournament is
+// over. Broadcast sign-off, with the real signed-player count and three ways
+// back into the archive. Names no future competition.
+function EndOfTournament({ careers, onResults }: { careers: number; onResults: () => void }) {
+  const action =
+    "flex-1 rounded-[11px] border border-pitch-600 bg-pitch-850 px-3 py-2.5 text-center font-label text-[11px] font-bold uppercase tracking-[0.14em] text-chalk-200 transition hover:border-volt/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-volt";
+  return (
+    <div className="panel !rounded-[16px] px-5 py-6">
+      <p className="font-label text-[10px] font-bold uppercase tracking-[0.22em] text-volt">
+        Full time on the tournament
+      </p>
+      <div className="mt-3 flex flex-col gap-3 font-label text-sm leading-relaxed text-chalk-300">
+        <p>
+          The World Cup is done. Spain lifted it, and{" "}
+          <span className="font-bold text-chalk-50">{careers}</span> careers were written
+          along the way.
+        </p>
+        <p>
+          The archive is still open: replay a real match, walk the bracket, or read back
+          through the results.
+        </p>
+        <p>
+          Super Sub is fixture-agnostic. Wherever the next tournament is, we&rsquo;ll be on
+          the bench.
+        </p>
+      </div>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Link href="/judges" className={action}>
+          Replay a match
+        </Link>
+        <Link href="/bracket" className={action}>
+          Walk the bracket
+        </Link>
+        <button type="button" onClick={onResults} className={action}>
+          Read the results
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function TabBar({
   tab,
   onSelect,
@@ -228,6 +269,10 @@ function BenchInner() {
   const liveCount = today.filter((f) => f.live).length;
   const upcomingCount = comingUp.reduce((n, g) => n + g.fixtures.length, 0);
   const fixtureCount = sched ? today.length + upcomingCount + (resultsTotal ?? 0) : null;
+  // The tournament is over when the schedule has loaded and there is nothing
+  // live/today and nothing upcoming. The end-of-tournament card then stands
+  // in for both empty tabs; it vanishes the instant any fixture returns.
+  const tournamentOver = Boolean(sched) && today.length === 0 && upcomingCount === 0;
 
   // ONE shared 1s clock drives every countdown (rider: no per-card
   // intervals). It runs only while a genuinely upcoming fixture is on
@@ -392,14 +437,21 @@ function BenchInner() {
                 {/* TODAY */}
                 {sched && tab === "today" && (
                   todaySorted.length === 0 ? (
-                    <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
-                      <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
-                        No matches today
-                      </p>
-                      <p className="mt-1.5 font-label text-xs text-chalk-500">
-                        Check Upcoming for what is next.
-                      </p>
-                    </div>
+                    tournamentOver && matchday ? (
+                      <EndOfTournament
+                        careers={matchday.playerCount}
+                        onResults={() => selectTab("results")}
+                      />
+                    ) : (
+                      <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
+                        <p className="hero-number text-sm uppercase tracking-wide text-chalk-300">
+                          No matches today
+                        </p>
+                        <p className="mt-1.5 font-label text-xs text-chalk-500">
+                          Check Upcoming for what is next.
+                        </p>
+                      </div>
+                    )
                   ) : (
                     todaySorted.map((f) => (
                       <FixtureCard
@@ -467,9 +519,16 @@ function BenchInner() {
                 {/* UPCOMING, grouped by day */}
                 {sched && tab === "upcoming" && (
                   comingUp.length === 0 ? (
-                    <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
-                      <p className="font-label text-sm text-chalk-400">Nothing scheduled yet.</p>
-                    </div>
+                    tournamentOver && matchday ? (
+                      <EndOfTournament
+                        careers={matchday.playerCount}
+                        onResults={() => selectTab("results")}
+                      />
+                    ) : (
+                      <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
+                        <p className="font-label text-sm text-chalk-400">Nothing scheduled yet.</p>
+                      </div>
+                    )
                   ) : (
                     comingUp.map((group) => (
                       <div key={group.date} className="flex flex-col gap-2.5">
