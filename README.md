@@ -124,6 +124,8 @@ Full verification trail: `docs/verification/` - every phase was gated
 with evidence before merge, including a live-fixture verification run and
 a scoring audit against real match data.
 
+What's next: `ROADMAP.md` - what was deliberately deferred and why.
+
 ## Running locally
 
 ```
