@@ -37,6 +37,22 @@ function pensNote(fixture: Fixture, pens: { p1: number; p2: number } | null): st
   )}`;
 }
 
+// Shape of one page from /api/results (the paginated tournament history).
+interface ResultDayData {
+  key: number;
+  date: string;
+  label: string;
+  fixtures: ResultFixture[];
+}
+interface ResultsResponse {
+  page: number;
+  days: ResultDayData[];
+  hasMore: boolean;
+  totalFinished: number;
+  totalDays: number;
+  error: string | null;
+}
+
 function finalFor(fixture: Fixture, r: ResultFixture): FixtureFinal {
   return { score: r.score, note: pensNote(fixture, r.pens) };
 }
@@ -59,22 +75,6 @@ function dayHeader(ts: number): string {
   return new Date(ts)
     .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
     .toUpperCase();
-}
-
-function groupByDay<T extends { fixture: Fixture }>(
-  items: T[],
-  newestFirst: boolean
-): { key: number; header: string; items: T[] }[] {
-  const map = new Map<number, T[]>();
-  for (const it of items) {
-    const k = Math.floor(it.fixture.startTime / 86_400_000);
-    const list = map.get(k) ?? [];
-    list.push(it);
-    map.set(k, list);
-  }
-  return [...map.entries()]
-    .map(([key, list]) => ({ key, header: dayHeader(list[0].fixture.startTime), items: list }))
-    .sort((a, b) => (newestFirst ? b.key - a.key : a.key - b.key));
 }
 
 function DayHead({ label }: { label: string }) {
@@ -136,6 +136,37 @@ function BenchInner() {
   const [summary, setSummary] = useState<PlayerSummary | null>(null);
   const [matchday, setMatchday] = useState<MatchdayPayload | null>(null);
 
+  // Full tournament history for the RESULTS tab, loaded a page of days at a
+  // time from /api/results so neither side handles every fixture at once.
+  const [resultDays, setResultDays] = useState<ResultDayData[]>([]);
+  const [resultsPage, setResultsPage] = useState(0);
+  const [resultsHasMore, setResultsHasMore] = useState(false);
+  const [resultsTotal, setResultsTotal] = useState<number | null>(null);
+  const [resultsError, setResultsError] = useState<string | null>(null);
+  const [loadingResults, setLoadingResults] = useState(false);
+
+  const loadResultsPage = async (page: number) => {
+    setLoadingResults(true);
+    try {
+      const res = await fetch(`/api/results?page=${page}`, { cache: "no-store" });
+      const body = (await res.json()) as ResultsResponse;
+      setResultsError(body.error);
+      setResultsTotal(body.totalFinished);
+      setResultsHasMore(body.hasMore);
+      setResultsPage(body.page);
+      setResultDays((prev) => (page === 0 ? body.days : [...prev, ...body.days]));
+    } catch (err) {
+      setResultsError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoadingResults(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadResultsPage(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const loadIdentity = async () => {
     const [s, m] = await Promise.all([
       fetchPlayerSummary(),
@@ -192,11 +223,10 @@ function BenchInner() {
 
   const today = sched?.today ?? [];
   const comingUp = sched?.comingUp ?? [];
-  const results = sched?.results ?? [];
   const liveNow = sched?.liveNow ?? false;
   const liveCount = today.filter((f) => f.live).length;
   const upcomingCount = comingUp.reduce((n, g) => n + g.fixtures.length, 0);
-  const fixtureCount = sched ? today.length + upcomingCount + results.length : null;
+  const fixtureCount = sched ? today.length + upcomingCount + (resultsTotal ?? 0) : null;
 
   // ONE shared 1s clock drives every countdown (rider: no per-card
   // intervals). It runs only while a genuinely upcoming fixture is on
@@ -255,7 +285,6 @@ function BenchInner() {
   const todaySorted = [...today].sort(
     (a, b) => (b.live ? 1 : 0) - (a.live ? 1 : 0) || a.fixture.startTime - b.fixture.startTime
   );
-  const resultDays = groupByDay(results, true);
 
   // First run (or any playerless visit) lands on Signing Day. A returning
   // player who claimed on another browser gets a Resume banner above it
@@ -311,7 +340,7 @@ function BenchInner() {
                 <TabBar
                   tab={tab}
                   onSelect={selectTab}
-                  counts={{ today: today.length, results: results.length, upcoming: upcomingCount }}
+                  counts={{ today: today.length, results: resultsTotal ?? 0, upcoming: upcomingCount }}
                   live={liveCount > 0}
                 />
 
@@ -379,28 +408,46 @@ function BenchInner() {
                 )}
 
                 {/* RESULTS, grouped by day, newest day first */}
-                {sched && tab === "results" && (
-                  results.length === 0 ? (
+                {tab === "results" && (
+                  resultDays.length === 0 ? (
                     <div className="panel-quiet !rounded-[14px] px-4 py-5 text-center">
-                      <p className="font-label text-sm text-chalk-400">No results yet.</p>
+                      <p className="font-label text-sm text-chalk-400">
+                        {loadingResults
+                          ? "Loading results..."
+                          : resultsError
+                            ? "Results are unavailable right now."
+                            : "No results yet."}
+                      </p>
                     </div>
                   ) : (
-                    resultDays.map((group) => (
-                      <div key={group.key} className="flex flex-col gap-2.5">
-                        <DayHead label={group.header} />
-                        {group.items.map((f) => (
-                          <FixtureCard
-                            key={f.fixture.fixtureId}
-                            listing={asListing(f.fixture, "finished")}
-                            result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
-                            href={matchHref(f.fixture.fixtureId, "live")}
-                            now={now}
-                            final={finalFor(f.fixture, f)}
-                            reportHref={f.hasReport ? `/match/${f.fixture.fixtureId}/report` : undefined}
-                          />
-                        ))}
-                      </div>
-                    ))
+                    <>
+                      {resultDays.map((day) => (
+                        <div key={day.key} className="flex flex-col gap-2.5">
+                          <DayHead label={day.label} />
+                          {day.fixtures.map((f) => (
+                            <FixtureCard
+                              key={f.fixture.fixtureId}
+                              listing={asListing(f.fixture, "finished")}
+                              result={matchday?.you?.results[f.fixture.fixtureId] ?? null}
+                              href={matchHref(f.fixture.fixtureId, "live")}
+                              now={now}
+                              final={finalFor(f.fixture, f)}
+                              reportHref={f.hasReport ? `/match/${f.fixture.fixtureId}/report` : undefined}
+                            />
+                          ))}
+                        </div>
+                      ))}
+                      {resultsHasMore && (
+                        <button
+                          type="button"
+                          onClick={() => void loadResultsPage(resultsPage + 1)}
+                          disabled={loadingResults}
+                          className="panel-quiet !rounded-[14px] px-4 py-3 text-center font-label text-xs font-bold uppercase tracking-[0.14em] text-chalk-300 transition disabled:opacity-60"
+                        >
+                          {loadingResults ? "Loading..." : "Load older results"}
+                        </button>
+                      )}
+                    </>
                   )
                 )}
 

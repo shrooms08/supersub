@@ -27,6 +27,7 @@ records, in order.
 - [SMOKE-EXHIBITION.md](SMOKE-EXHIBITION.md) - Exhibition replays: entries on the bundled replay fixtures keep the full loop and career history but never touch a competitive number.
 - [SMOKE-FINAL.md](SMOKE-FINAL.md) - Flags in the match scoreboard and resolved player names in the live ticker.
 - [SMOKE-DISPLAY.md](SMOKE-DISPLAY.md) - Rendering scored penalties in the match report and a pre-coverage marker for goals that predate the feed's coverage.
+- [SMOKE-HISTORY.md](SMOKE-HISTORY.md) - Full tournament history: the RESULTS tab carries every finished fixture grouped by UTC day, newest first, with a day-list cache plus per-fixture canonical-score cache and day pagination (cold and warm timings measured).
 
 ## Live and production checks
 
