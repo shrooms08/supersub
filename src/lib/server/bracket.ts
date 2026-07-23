@@ -248,3 +248,130 @@ export async function getBracket(now: number): Promise<BracketPayload> {
 
   return { rounds, thirdPlace, champion, groupStageCount, error: null };
 }
+
+// ---- the mirrored tree ----------------------------------------------------
+//
+// The bracket-v2 view is a mirrored tree: two halves of the draw converging
+// on the Final. The halves are NOT guessed - they are threaded backward from
+// the Final by team identity, which is deterministic from the results we
+// already have:
+//
+//   - The Final's two participants are the two finalists. Each finalist's
+//     side of the draw is the sub-tree that fed their Semi-final.
+//   - A match in round r+1 has two participants; each is the WINNER of
+//     exactly one match in round r. So each match's two feeder matches are
+//     found by name: the round-r match whose winner is participant1, and the
+//     round-r match whose winner is participant2.
+//   - Recurse from each Semi-final down to the Round of 32; the Round of 32
+//     matches are the leaves.
+//
+// If any feeder cannot be found uniquely (a missing or ambiguous winner),
+// that fixture is recorded in `unplaceable` and the caller MUST NOT render a
+// guessed tree - it reports and stops.
+
+export interface BracketNode {
+  match: BracketFixture;
+  // Feeder matches (round r-1), participant1's side first. null at the
+  // Round of 32 (the leaves).
+  children: [BracketNode, BracketNode] | null;
+}
+
+export interface BracketTree {
+  // The two halves of the draw. left is the Final's participant1 side,
+  // right is the participant2 side. Each is the sub-tree rooted at that
+  // finalist's Semi-final. Null only when the tree could not be built.
+  left: BracketNode | null;
+  right: BracketNode | null;
+  final: BracketFixture | null;
+  thirdPlace: BracketFixture | null;
+  champion: { team: string; fixtureId: number } | null;
+  groupStageCount: number;
+  // The stage names, mirrored on each half (Round of 32 -> Semi-finals),
+  // outermost first. Handy for the column headers.
+  roundNames: string[];
+  // Fixtures that could not be placed deterministically. When non-empty the
+  // view must refuse to draw a tree rather than guess.
+  unplaceable: string[];
+  error: string | null;
+}
+
+function nameOfWinner(f: BracketFixture): string | null {
+  if (f.winner === 1) return f.participant1;
+  if (f.winner === 2) return f.participant2;
+  return null;
+}
+
+// The one round-r match whose winner is `team`, or null if not exactly one.
+function feederFor(team: string, roundFixtures: BracketFixture[]): BracketFixture | null {
+  const hits = roundFixtures.filter((f) => nameOfWinner(f) === team);
+  return hits.length === 1 ? hits[0] : null;
+}
+
+export function buildBracketTree(payload: BracketPayload): BracketTree {
+  const base: Omit<BracketTree, "left" | "right"> = {
+    final: null,
+    thirdPlace: payload.thirdPlace,
+    champion: payload.champion,
+    groupStageCount: payload.groupStageCount,
+    roundNames: [],
+    unplaceable: [],
+    error: payload.error,
+  };
+  if (payload.error) return { ...base, left: null, right: null };
+
+  // Index the spine by stage. Threading needs every knockout round present.
+  const byStage = new Map<Stage, BracketFixture[]>();
+  for (const r of payload.rounds) byStage.set(r.stage, r.fixtures);
+  const order: Stage[] = ["R32", "R16", "QF", "SF"];
+  const missing = order.find((s) => !byStage.has(s));
+  const finalFixture = byStage.get("FINAL")?.[0] ?? null;
+  if (missing || !finalFixture) {
+    return {
+      ...base,
+      left: null,
+      right: null,
+      error: `bracket tree needs every knockout round; missing ${missing ?? "FINAL"}`,
+    };
+  }
+
+  const unplaceable: string[] = [];
+  const label = (f: BracketFixture) => `${f.participant1} v ${f.participant2}`;
+
+  // Build a sub-tree for `match`, sitting at round index `idx` (0=R32 leaf).
+  function build(match: BracketFixture, idx: number): BracketNode {
+    if (idx === 0) return { match, children: null }; // Round of 32: a leaf
+    const prev = byStage.get(order[idx - 1])!;
+    const a = feederFor(match.participant1, prev);
+    const b = feederFor(match.participant2, prev);
+    if (!a || !b) {
+      unplaceable.push(label(match));
+      return { match, children: null };
+    }
+    return { match, children: [build(a, idx - 1), build(b, idx - 1)] };
+  }
+
+  // The two Semi-finals: the one each finalist won. participant1 is the left
+  // half, participant2 the right. (The Final need not have a winner for the
+  // halves to be known - the finalists are its two participants.)
+  const sf = byStage.get("SF")!;
+  const leftSf = feederFor(finalFixture.participant1, sf);
+  const rightSf = feederFor(finalFixture.participant2, sf);
+  if (!leftSf || !rightSf) {
+    unplaceable.push(`Final ${label(finalFixture)} (semi-final feeders)`);
+    return { ...base, left: null, right: null, final: finalFixture, unplaceable };
+  }
+
+  const SF_IDX = 3; // R32=0, R16=1, QF=2, SF=3
+  const left = build(leftSf, SF_IDX);
+  const right = build(rightSf, SF_IDX);
+
+  // Mirrored column headers, outermost (Round of 32) first.
+  const roundNames = [STAGE_NAME.R32, STAGE_NAME.R16, STAGE_NAME.QF, STAGE_NAME.SF];
+
+  return { ...base, left, right, final: finalFixture, roundNames, unplaceable };
+}
+
+export async function getBracketTree(now: number): Promise<BracketTree> {
+  const payload = await getBracket(now);
+  return buildBracketTree(payload);
+}
